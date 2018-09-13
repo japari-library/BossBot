@@ -20,7 +20,12 @@ namespace NadekoBot.Modules.Searches
     {
         public class JapariLibrarySearchCommand : NadekoSubmodule<SearchesService>
         {
-            private static HttpClient http = new HttpClient(); // for reuse
+            private readonly IHttpClientFactory _httpFactory;
+            public JapariLibrarySearchCommand(IHttpClientFactory factory)
+            {
+                _httpFactory = factory;
+            }
+
             [NadekoCommand, Usage, Description, Aliases]
             public async Task JapariWiki([Remainder] string query = null)
             {
@@ -31,14 +36,19 @@ namespace NadekoBot.Modules.Searches
                 }
                 var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching"));
                 string json;
-                try
+                using (var http = _httpFactory.CreateClient())
                 {
-                    json = await http.GetStringAsync(String.Format("https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url", Uri.EscapeDataString(query)));
-
-                } catch (System.Net.Http.HttpRequestException) {
-                    await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error"));
-                    return;
+                    try
+                    {
+                        json = await http.GetStringAsync(String.Format("https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url", Uri.EscapeDataString(query)));
+                    }
+                    catch (System.Net.Http.HttpRequestException)
+                    {
+                        await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error"));
+                        return;
+                    }
                 }
+                
                 var data = JsonConvert.DeserializeObject<JapariLibraryAPIModel>(json);
                 if (data.query == null)
                 {
