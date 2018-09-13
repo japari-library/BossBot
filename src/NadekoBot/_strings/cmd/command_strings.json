@@ -3452,5 +3452,12 @@
     "usage": [
       "{0}economy"
     ]
+  },
+  "japariwiki": {
+    "cmd": "japariwiki jw",
+    "desc": "Search Japari Library for article.",
+    "usage": [
+      "{0}japariwiki serval"
+    ]
   }
 }
