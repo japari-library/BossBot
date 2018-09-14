@@ -3459,5 +3459,12 @@
     "usage": [
       "{0}japariwiki serval"
     ]
+  },
+  "randomfriend": {
+    "cmd": "randomfriend randfr",
+    "desc": "Get a random Friend page from Japari Library.",
+    "usage": [
+      "{0}randomfriend"
+    ]
   }
 }
