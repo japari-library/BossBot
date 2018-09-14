@@ -1,3 +1,15 @@
+## Guidelines for Contributors
+
+1) Follow the NadekoBot guide on setting up from source, just using the forked version instead of the vanilla one: https://nadekobot.readthedocs.io/en/latest/guides/From%20Source/
+2) We are all expected to test our code, by self hosting it and using it on our own test servers.
+6) You shouldn't push to "1.9" (the master branch).
+3) All code that builds should be pushed to the "dev" branch. This includes incomplete and complete implementations of features.
+4) The "experimental" branch exists to host code that doesn't build that you cannot fix yourself, but you should only post such code there after you have done extensive testing. Please contact other members when doing so.
+5) Typically, code in the "experimental" branch is merged in the "dev" branch once it isn't broken anymore, and code in the "dev" branch is merged into the "1.9" (master) branch once it has been tested and confirmed to work properly.
+6) Do not push your credentials.json file. That file should be ignored by default but sometimes .gitignore does a fucky wucky.
+7) Do not push youtube-dl and ffmpeg, because of licensing issues. .gitignore never failed on these two... yet.
+8) Please write readable, decently formatted and commented code.
+
 ![img](https://ci.appveyor.com/api/projects/status/gmu6b3ltc80hr3k9?svg=true)
 [![Discord](https://discordapp.com/api/guilds/117523346618318850/widget.png)](https://discord.gg/nadekobot)
 [![Documentation Status](https://readthedocs.org/projects/nadekobot/badge/?version=latest)](http://nadekobot.readthedocs.io/en/latest/?badge=latest)
