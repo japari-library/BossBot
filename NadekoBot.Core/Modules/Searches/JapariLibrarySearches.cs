@@ -35,17 +35,17 @@ namespace NadekoBot.Modules.Searches
                 {
                     await ReplyErrorLocalized("jl_wikisearch_query_empty").ConfigureAwait(false); return;
                 }
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching"));
+                var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching")).ConfigureAwait(false);
                 string json;
                 using (var http = _httpFactory.CreateClient())
                 {
                     try
                     {
-                        json = await http.GetStringAsync(String.Format("https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url", Uri.EscapeDataString(query)));
+                        json = await http.GetStringAsync(String.Format("https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url", Uri.EscapeDataString(query))).ConfigureAwait(false);
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
-                        await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error"));
+                        await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -53,16 +53,16 @@ namespace NadekoBot.Modules.Searches
                 var data = JsonConvert.DeserializeObject<JapariLibraryAPIModel>(json);
                 if (data.query == null)
                 {
-                    await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found"));
+                    await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
                     return;
                 }
-                await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_success", query, data.query.pages[0].touched, data.query.pages[0].revisions[0].user, data.query.pages[0].lastrevid, data.query.pages[0].fullurl));
+                await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_success", query, data.query.pages[0].touched, data.query.pages[0].revisions[0].user, data.query.pages[0].lastrevid, data.query.pages[0].fullurl)).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             public async Task RandomFriend()
             {
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching"));
+                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
                 string friendPage; //we need to declare this here to use it out of the do-while loop
                 using (var http = _httpFactory.CreateClient())
                 {
@@ -70,13 +70,13 @@ namespace NadekoBot.Modules.Searches
                     {
                         try
                         {
-                            var response = await http.GetAsync("https://japari-library.com/wiki/Special:RandomInCategory/Friends");
+                            var response = await http.GetAsync("https://japari-library.com/wiki/Special:RandomInCategory/Friends").ConfigureAwait(false);
                             var location = response.Headers.Location; //the redirect isn't automatically followed, you have to dig in the response header to find out what the page actually is
                             friendPage = location.AbsoluteUri;
                         }
                         catch (System.Net.Http.HttpRequestException)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error"));
+                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
                             return;
                         }
                         friendPage = Regex.Replace(friendPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
@@ -84,7 +84,7 @@ namespace NadekoBot.Modules.Searches
                     } while (friendPage.Contains("Category:")); //Category pages count as Friend pages but we don't want none of that
                     
                     
-                    await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage));
+                    await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
                 }
             }
         }
