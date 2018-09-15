@@ -40,6 +40,9 @@ namespace NadekoBot.Core.Services
         private IEnumerable<ILateBlocker> _lateBlockers;
         private IEnumerable<ILateExecutor> _lateExecutors;
 
+        //japari original, message logger for word cloud use
+        private MessageLoggerService _messagelogger;
+
         public string DefaultPrefix { get; private set; }
         private ConcurrentDictionary<ulong, string> _prefixes { get; } = new ConcurrentDictionary<ulong, string>();
 
@@ -55,7 +58,8 @@ namespace NadekoBot.Core.Services
 
         public CommandHandler(DiscordSocketClient client, DbService db,
             IBotConfigProvider bcp, CommandService commandService,
-            IBotCredentials credentials, NadekoBot bot, IServiceProvider services)
+            IBotCredentials credentials, NadekoBot bot, IServiceProvider services,
+            MessageLoggerService messageLogger) //add message logger
         {
             _client = client;
             _commandService = commandService;
@@ -64,6 +68,8 @@ namespace NadekoBot.Core.Services
             _db = db;
             _bcp = bcp;
             _services = services;
+
+            _messagelogger = messageLogger; //our very own message logger
 
             _log = LogManager.GetCurrentClassLogger();
 
@@ -243,6 +249,8 @@ namespace NadekoBot.Core.Services
 
                 var channel = msg.Channel as ISocketMessageChannel;
                 var guild = (msg.Channel as SocketTextChannel)?.Guild;
+                
+                await _messagelogger.LogUserMessage(usrMsg, channel as ITextChannel).ConfigureAwait(false); //log the message
 
                 await TryRunCommand(guild, channel, usrMsg).ConfigureAwait(false);
             }
