@@ -15,6 +15,13 @@ namespace NadekoBot.Core.Modules.Games.Common.Trivia
         public int QuestionTimer { get; set; } = 30;
         [Option('t', "timeout", Required = false, Default = 0, HelpText = "Number of questions of inactivity in order stop. Set 0 for never. Default 10.")]
         public int Timeout { get; set; } = 10;
+		
+		//ZGD: Options added for the two trivia-friends categories.
+		[Option('f', "friends", Required = false, Default = false, HelpText = "Name that Friend! ~ZGD")]
+        public bool IsFriends { get; set; } = false;
+		[Option('h', "friendshard", Required = false, Default = false, HelpText = "Name that Friend! Hard ~ZGD")]
+        public bool IsFriendsHard { get; set; } = false;
+		//ZGD: end of options
 
         public void NormalizeOptions()
         {
