@@ -89,7 +89,7 @@ namespace NadekoBot.Modules.Searches
                     
                     if (opts.IsUnembedded)
                     {
-                        friendPage = "<" + friendPage + ">";
+                        friendPage = "<" + friendPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
                     }
                     
                     await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
