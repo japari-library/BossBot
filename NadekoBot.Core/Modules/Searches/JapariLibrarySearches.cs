@@ -89,9 +89,7 @@ namespace NadekoBot.Modules.Searches
                     
                     if (opts.IsUnembedded)
                     {
-                        string s = "<";
-                        s.Concat(friendPage);
-                        s.Concat(">");
+                        friendPage = "<" + friendPage + ">";
                     }
                     
                     await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
