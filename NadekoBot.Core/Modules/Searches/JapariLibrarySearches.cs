@@ -14,6 +14,7 @@ using System.Net.Http;
 using System;
 using NadekoBot.Core.Modules.Searches.Common;
 using System.Text.RegularExpressions;
+using NadekoBot.Core.Common; //for OptionParser
 
 namespace NadekoBot.Modules.Searches
 {
@@ -60,8 +61,11 @@ namespace NadekoBot.Modules.Searches
             }
 
             [NadekoCommand, Usage, Description, Aliases]
-            public async Task RandomFriend()
+            [NadekoOptions(typeof(SearchOptions))]
+            public async Task RandomFriend(params string[] args)
             {
+                var (opts, _) = OptionsParser.ParseFrom(new SearchOptions(), args); //parse options, to be used to check if the result should be unembedded
+
                 var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
                 string friendPage; //we need to declare this here to use it out of the do-while loop
                 using (var http = _httpFactory.CreateClient())
@@ -83,6 +87,10 @@ namespace NadekoBot.Modules.Searches
                         
                     } while (friendPage.Contains("Category:")); //Category pages count as Friend pages but we don't want none of that
                     
+                    if (opts.IsUnembedded)
+                    {
+                        friendPage = "<" + friendPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
+                    }
                     
                     await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
                 }

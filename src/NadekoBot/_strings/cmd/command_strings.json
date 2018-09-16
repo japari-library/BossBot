@@ -3462,9 +3462,10 @@
   },
   "randomfriend": {
     "cmd": "randomfriend randfr",
-    "desc": "Get a random Friend page from Japari Library.",
+    "desc": "Get a random Friend page from Japari Library. Add -n to not embed the link.",
     "usage": [
-      "{0}randomfriend"
+      "{0}randomfriend",
+      "{0}randfr -n"
     ]
   }
 }
