@@ -23,10 +23,6 @@ namespace NadekoBot.Core.Modules.Games.Common.Trivia
         public bool IsFriendsHard { get; set; } = false;
 		//ZGD: end of options
 
-        //Option for leaving results unembedded
-        [Option('n', "unembed", Required = false, Default = false, HelpText = "Unembedded")]
-        public bool IsUnembedded { get; set } = false;
-
         public void NormalizeOptions()
         {
             if (WinRequirement < 0)
