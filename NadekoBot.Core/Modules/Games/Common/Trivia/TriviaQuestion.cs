@@ -61,10 +61,17 @@ namespace NadekoBot.Modules.Games.Common.Trivia
                 return true;
             }
 
-            int levDistanceClean = cleanNormalizedAnswer.LevenshteinDistance(cleanGuess);
-            int levDistanceNormal = normalizedAnswer.LevenshteinDistance(normalizedGuess);
-            return JudgeGuess(cleanNormalizedAnswer.Length, cleanGuess.Length, levDistanceClean)
-                || JudgeGuess(normalizedAnswer.Length, normalizedGuess.Length, levDistanceNormal);
+			//ZGD: Tachikoma exception
+			if(!(normalizedAnswer.Contains("Tachikoma") || normalizedAnswer.Contains("tachikoma")))
+			{
+				int levDistanceClean = cleanNormalizedAnswer.LevenshteinDistance(cleanGuess);
+				int levDistanceNormal = normalizedAnswer.LevenshteinDistance(normalizedGuess);
+				return JudgeGuess(cleanNormalizedAnswer.Length, cleanGuess.Length, levDistanceClean)
+					|| JudgeGuess(normalizedAnswer.Length, normalizedGuess.Length, levDistanceNormal);
+			}
+			else
+				return false;
+			//ZGD: end of Tachikoma exception
         }
 
         private static bool JudgeGuess(int guessLength, int answerLength, int levDistance)
