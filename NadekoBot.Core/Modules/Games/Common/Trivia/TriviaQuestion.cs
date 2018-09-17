@@ -37,22 +37,34 @@ namespace NadekoBot.Modules.Games.Common.Trivia
 
         public string GetHint() => Scramble(Answer);
 
+        // Normalized guess and answer to make them accent agnostic
         public bool IsAnswerCorrect(string guess)
         {
-            if (Answer.Equals(guess, StringComparison.InvariantCulture))
+            string noAccents = "[^a-zA-Z0-9'\\-\\s\\?\\+\\=\\-_\\)\\(\\*\\&\\%\\$\\€\\£\\\"\\!\\,\\.\\<\\>\\/\\*\\@\\;\\:]"; // accept alphanumeric characters and non-accent symbols
+
+            string normalizedGuess = guess.Normalize(System.Text.NormalizationForm.FormD); //normalise the guess
+            normalizedGuess = Regex.Replace(normalizedGuess, noAccents, "");
+            normalizedGuess = normalizedGuess.Normalize(System.Text.NormalizationForm.FormC);
+
+            string normalizedAnswer = Answer.Normalize(System.Text.NormalizationForm.FormD); //normalise the answer
+            normalizedAnswer = Regex.Replace(normalizedAnswer, noAccents, ""); 
+            normalizedAnswer = normalizedAnswer.Normalize(System.Text.NormalizationForm.FormC);
+
+            if (normalizedAnswer.Equals(normalizedGuess, StringComparison.InvariantCulture))
             {
                 return true;
             }
-            var cleanGuess = Clean(guess);
-            if (CleanAnswer.Equals(cleanGuess, StringComparison.InvariantCulture))
+            var cleanGuess = Clean(normalizedGuess); //clean the normalised guess
+            string cleanNormalizedAnswer = Clean(normalizedAnswer); //clean the normalised answer, skip check for premade clean answer
+            if (cleanNormalizedAnswer.Equals(cleanGuess, StringComparison.InvariantCulture))
             {
                 return true;
             }
 
-            int levDistanceClean = CleanAnswer.LevenshteinDistance(cleanGuess);
-            int levDistanceNormal = Answer.LevenshteinDistance(guess);
-            return JudgeGuess(CleanAnswer.Length, cleanGuess.Length, levDistanceClean)
-                || JudgeGuess(Answer.Length, guess.Length, levDistanceNormal);
+            int levDistanceClean = cleanNormalizedAnswer.LevenshteinDistance(cleanGuess);
+            int levDistanceNormal = normalizedAnswer.LevenshteinDistance(normalizedGuess);
+            return JudgeGuess(cleanNormalizedAnswer.Length, cleanGuess.Length, levDistanceClean)
+                || JudgeGuess(normalizedAnswer.Length, normalizedGuess.Length, levDistanceNormal);
         }
 
         private static bool JudgeGuess(int guessLength, int answerLength, int levDistance)
