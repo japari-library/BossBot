@@ -15,6 +15,11 @@ using System;
 using NadekoBot.Core.Modules.Searches.Common;
 using System.Text.RegularExpressions;
 using NadekoBot.Core.Common; //for OptionParser
+using Configuration = AngleSharp.Configuration; //for parsing html page
+using AngleSharp;
+using AngleSharp.Dom;
+using AngleSharp.Dom.Html;
+using AngleSharp.Parser.Html;
 
 namespace NadekoBot.Modules.Searches
 {
@@ -90,9 +95,42 @@ namespace NadekoBot.Modules.Searches
                     if (opts.IsUnembedded)
                     {
                         friendPage = "<" + friendPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
+                        await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
                     }
+                    else //make it embedded
+                    {
+
+                        var config = Configuration.Default.WithDefaultLoader();
+
+                        using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false)){
+                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
+                            var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image
+
+                            var friendInfoElem = document.QuerySelector("#mw-content-text > p"); 
+                            var friendInfo = friendInfoElem.InnerHtml; //get friend info
+
+                            var friendNameElem = document.QuerySelector("#firstHeading");
+                            var friendName = friendNameElem.InnerHtml; //get friend name
+
+                            friendName = Regex.Replace(friendName, "<[^>]*>", "");
+                            friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
+                            
+                            await msg.DeleteAsync();
+                            await Context.Channel.EmbedAsync(new EmbedBuilder().WithOkColor() //make a small embed
+                            .WithTitle(friendName)
+                            .WithDescription(friendInfo)
+                            .WithThumbnailUrl(friendImageUrl)
+                            .WithUrl(friendPage)
+                            );
+                        }
+
+                        
+                    }
+
                     
-                    await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
+
+                    
+                    
                 }
             }
         }
