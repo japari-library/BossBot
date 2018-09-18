@@ -168,12 +168,18 @@ namespace NadekoBot.Modules.Searches
                             friendName = Regex.Replace(friendName, "<[^>]*>", "");
                             friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
 
+                            // footer 
+                            var footer = new EmbedFooterBuilder();
+                            footer.Text = "Japari Library";
+                            footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+
                             await msg.DeleteAsync();
                             await Context.Channel.EmbedAsync(new EmbedBuilder().WithOkColor() //make a small embed
                             .WithTitle(friendName)
                             .WithDescription(friendInfo)
                             .WithThumbnailUrl(friendImageUrl)
                             .WithUrl(friendPage)
+                            .WithFooter(footer)
                             ).ConfigureAwait(false);
                         }
 
