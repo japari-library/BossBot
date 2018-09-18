@@ -6,7 +6,7 @@ namespace NadekoBot.Core.Modules.Searches.Common
 {
 
 
-    public class JapariLibraryAPIModel
+    public class JapariLibraryQueryAPIModel
     {
         public bool batchcomplete { get; set; }
         public Continue @continue { get; set; }
