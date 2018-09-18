@@ -37,17 +37,77 @@ namespace NadekoBot.Modules.Searches
             public async Task JapariWiki([Remainder] string query = null)
             {
                 query = query?.Trim();
+
+                // reply to the user if the query is empty
                 if (string.IsNullOrWhiteSpace(query))
                 {
                     await ReplyErrorLocalized("jl_wikisearch_query_empty").ConfigureAwait(false); return;
                 }
                 var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching")).ConfigureAwait(false);
-                string json;
+                // search with the query
                 using (var http = _httpFactory.CreateClient())
                 {
                     try
                     {
-                        json = await http.GetStringAsync(String.Format("https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url", Uri.EscapeDataString(query))).ConfigureAwait(false);
+                        // search with the query
+                        string queryApiUrl = "https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url";
+                        string queryJson = await http.GetStringAsync(String.Format(queryApiUrl, Uri.EscapeDataString(query))).ConfigureAwait(false);
+                        var data = JsonConvert.DeserializeObject<JapariLibraryQueryAPIModel>(queryJson);
+                        // reply to the user if their query cannot be found
+                        if (data.query == null)
+                        {
+                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
+                            return;
+                        }
+                        var queryPage = data.query.pages[0];
+                        // get page information
+                        string parseApiUrl = "https://japari-library.com//w/api.php?action=parse&format=json&page={0}&prop=categories%7Cimages%7Cdisplaytitle%7Cproperties&formatversion=latest";
+                        string parseJson = await http.GetStringAsync(String.Format(parseApiUrl, Uri.EscapeDataString(data.query.pages[0].title))).ConfigureAwait(false);
+                        var parseData = JsonConvert.DeserializeObject<JapariLibraryParseAPIModel>(parseJson);
+                        if (parseData.parse == null)
+                        {
+                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
+                            return;
+                        }
+                        var parsePage = parseData.parse;
+                        var imageUrl = "";
+                        // get image because mediawiki doesn't want to expose image URL
+                        if (parsePage.images.Count > 0)
+                        {
+                            string imageInfoUrl = "https://japari-library.com/w/api.php?action=query&format=json&prop=imageinfo&titles=File:{0}&formatversion=latest&iiprop=timestamp%7Cuser%7Curl";
+                            string imageInfoJson = await http.GetStringAsync(String.Format(imageInfoUrl, Uri.EscapeDataString(parsePage.images[0]))).ConfigureAwait(false);
+                            var imageInfoData = JsonConvert.DeserializeObject<JapariLibraryImageInfoAPIModel>(imageInfoJson);
+                            if (imageInfoData.query == null)
+                            {
+                                await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_image_fetch_failed")).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                imageUrl = imageInfoData.query.pages[0].imageinfo[0].url;
+                            }
+                        }
+                        else
+                        {
+                            await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_image_fetch_failed")).ConfigureAwait(false);
+                        }
+                        await msg.DeleteAsync().ConfigureAwait(false);
+                        // footer 
+                        var footer = new EmbedFooterBuilder();
+                        footer.Text = "Japari Library";
+                        footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+                        // send with embed 
+                        await Context.Channel.EmbedAsync(new EmbedBuilder()
+                        .WithFooter(footer)
+                        .WithColor(new Discord.Color(52, 152, 219))
+                        .WithTitle(parsePage.title)
+                        .WithDescription(parsePage.properties.description)
+                        .WithThumbnailUrl(imageUrl)
+                        .WithUrl(queryPage.fullurl)
+                        .AddField("Search Term", query, inline: true)
+                        .AddField("Revision", queryPage.revisions[0].timestamp, inline: true)
+                        .AddField("Revision By", queryPage.revisions[0].user, inline: true)
+                        .AddField("Revision ID", queryPage.revisions[0].revid, inline: true)
+                        );
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
@@ -55,14 +115,6 @@ namespace NadekoBot.Modules.Searches
                         return;
                     }
                 }
-                
-                var data = JsonConvert.DeserializeObject<JapariLibraryAPIModel>(json);
-                if (data.query == null)
-                {
-                    await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
-                    return;
-                }
-                await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_success", query, data.query.pages[0].touched, data.query.pages[0].revisions[0].user, data.query.pages[0].lastrevid, data.query.pages[0].fullurl)).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
@@ -89,9 +141,9 @@ namespace NadekoBot.Modules.Searches
                             return;
                         }
                         friendPage = Regex.Replace(friendPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
-                        
+
                     } while (friendPage.Contains("Category:")); //Category pages count as Friend pages but we don't want none of that
-                    
+
                     if (opts.IsUnembedded)
                     {
                         friendPage = "<" + friendPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
@@ -102,11 +154,12 @@ namespace NadekoBot.Modules.Searches
 
                         var config = Configuration.Default.WithDefaultLoader();
 
-                        using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false)){
+                        using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false))
+                        {
                             var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
                             var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image
 
-                            var friendInfoElem = document.QuerySelector("#mw-content-text > p"); 
+                            var friendInfoElem = document.QuerySelector("#mw-content-text > p");
                             var friendInfo = friendInfoElem.InnerHtml; //get friend info
 
                             var friendNameElem = document.QuerySelector("#firstHeading");
@@ -114,7 +167,7 @@ namespace NadekoBot.Modules.Searches
 
                             friendName = Regex.Replace(friendName, "<[^>]*>", "");
                             friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
-                            
+
                             await msg.DeleteAsync();
                             await Context.Channel.EmbedAsync(new EmbedBuilder().WithOkColor() //make a small embed
                             .WithTitle(friendName)
@@ -124,13 +177,13 @@ namespace NadekoBot.Modules.Searches
                             );
                         }
 
-                        
+
                     }
 
-                    
 
-                    
-                    
+
+
+
                 }
             }
         }
