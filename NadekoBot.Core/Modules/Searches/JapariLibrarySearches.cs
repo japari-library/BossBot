@@ -174,7 +174,7 @@ namespace NadekoBot.Modules.Searches
                             .WithDescription(friendInfo)
                             .WithThumbnailUrl(friendImageUrl)
                             .WithUrl(friendPage)
-                            ).ConfigureAwait(false);
+                            );
                         }
 
 
