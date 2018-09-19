@@ -157,6 +157,7 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false))
                         {
                             var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
+                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a friend page has multiple Friend pictures, this will get the corrct image
                             var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
