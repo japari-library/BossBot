@@ -72,24 +72,16 @@ namespace NadekoBot.Modules.Searches
                         var parsePage = parseData.parse;
                         var imageUrl = "";
                         // get image because mediawiki doesn't want to expose image URL
-                        if (parsePage.images.Count > 0)
+                        
+                        var config = Configuration.Default.WithDefaultLoader();
+
+                        using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
                         {
-                            string imageInfoUrl = "https://japari-library.com/w/api.php?action=query&format=json&prop=imageinfo&titles=File:{0}&formatversion=latest&iiprop=timestamp%7Cuser%7Curl";
-                            string imageInfoJson = await http.GetStringAsync(String.Format(imageInfoUrl, Uri.EscapeDataString(parsePage.images[0]))).ConfigureAwait(false);
-                            var imageInfoData = JsonConvert.DeserializeObject<JapariLibraryImageInfoAPIModel>(imageInfoJson);
-                            if (imageInfoData.query == null)
-                            {
-                                await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_image_fetch_failed")).ConfigureAwait(false);
-                            }
-                            else
-                            {
-                                imageUrl = imageInfoData.query.pages[0].imageinfo[0].url;
-                            }
+                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
+                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a friend page has multiple Friend pictures, this will get the corrct image
+                            imageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
                         }
-                        else
-                        {
-                            await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_image_fetch_failed")).ConfigureAwait(false);
-                        }
+
                         await msg.DeleteAsync().ConfigureAwait(false);
                         // footer 
                         var footer = new EmbedFooterBuilder();
