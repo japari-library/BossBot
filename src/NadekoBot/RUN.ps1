@@ -1,8 +1,7 @@
 $scheduledRestartTime = 5400 # time in seconds
 
 while ($true) {
-	$a = $a + 1
-	$process = Start-Process "dotnet.exe" -ArgumentList "run -c release" -PassThru 
+	$process = Start-Process "dotnet.exe" -ArgumentList "run -c release" -PassThru -NoNewWindow
 	$wait = Wait-Process -Id $process.Id -Timeout $scheduledRestartTime
 	
 	echo "The bot was shutdown..."
