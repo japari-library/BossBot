@@ -50,7 +50,7 @@ namespace NadekoBot.Modules.Searches
                     try
                     {
                         // search with the query
-                        string queryApiUrl = "https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url";
+                        string queryApiUrl = "https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url&redirects";
                         string queryJson = await http.GetStringAsync(String.Format(queryApiUrl, Uri.EscapeDataString(query))).ConfigureAwait(false);
                         var data = JsonConvert.DeserializeObject<JapariLibraryQueryAPIModel>(queryJson);
                         // reply to the user if their query cannot be found
@@ -61,7 +61,7 @@ namespace NadekoBot.Modules.Searches
                         }
                         var queryPage = data.query.pages[0];
                         // get page information
-                        string parseApiUrl = "https://japari-library.com//w/api.php?action=parse&format=json&page={0}&prop=categories%7Cimages%7Cdisplaytitle%7Cproperties&formatversion=latest";
+                        string parseApiUrl = "https://japari-library.com//w/api.php?action=parse&format=json&page={0}&prop=categories%7Cimages%7Cdisplaytitle%7Cproperties&formatversion=latest&redirects";
                         string parseJson = await http.GetStringAsync(String.Format(parseApiUrl, Uri.EscapeDataString(data.query.pages[0].title))).ConfigureAwait(false);
                         var parseData = JsonConvert.DeserializeObject<JapariLibraryParseAPIModel>(parseJson);
                         if (parseData.parse == null)
