@@ -50,7 +50,7 @@ namespace NadekoBot.Modules.Searches
                     try
                     {
                         // search with the query
-                        string queryApiUrl = "https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url";
+                        string queryApiUrl = "https://japari-library.com/w/api.php?action=query&formatversion=2&format=json&generator=search&gsrsearch={0}&gsrlimit=1&prop=info|revisions&inprop=url&redirects";
                         string queryJson = await http.GetStringAsync(String.Format(queryApiUrl, Uri.EscapeDataString(query))).ConfigureAwait(false);
                         var data = JsonConvert.DeserializeObject<JapariLibraryQueryAPIModel>(queryJson);
                         // reply to the user if their query cannot be found
@@ -61,7 +61,7 @@ namespace NadekoBot.Modules.Searches
                         }
                         var queryPage = data.query.pages[0];
                         // get page information
-                        string parseApiUrl = "https://japari-library.com//w/api.php?action=parse&format=json&page={0}&prop=categories%7Cimages%7Cdisplaytitle%7Cproperties&formatversion=latest";
+                        string parseApiUrl = "https://japari-library.com//w/api.php?action=parse&format=json&page={0}&prop=categories%7Cimages%7Cdisplaytitle%7Cproperties&formatversion=latest&redirects";
                         string parseJson = await http.GetStringAsync(String.Format(parseApiUrl, Uri.EscapeDataString(data.query.pages[0].title))).ConfigureAwait(false);
                         var parseData = JsonConvert.DeserializeObject<JapariLibraryParseAPIModel>(parseJson);
                         if (parseData.parse == null)
@@ -72,24 +72,16 @@ namespace NadekoBot.Modules.Searches
                         var parsePage = parseData.parse;
                         var imageUrl = "";
                         // get image because mediawiki doesn't want to expose image URL
-                        if (parsePage.images.Count > 0)
+                        
+                        var config = Configuration.Default.WithDefaultLoader();
+
+                        using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
                         {
-                            string imageInfoUrl = "https://japari-library.com/w/api.php?action=query&format=json&prop=imageinfo&titles=File:{0}&formatversion=latest&iiprop=timestamp%7Cuser%7Curl";
-                            string imageInfoJson = await http.GetStringAsync(String.Format(imageInfoUrl, Uri.EscapeDataString(parsePage.images[0]))).ConfigureAwait(false);
-                            var imageInfoData = JsonConvert.DeserializeObject<JapariLibraryImageInfoAPIModel>(imageInfoJson);
-                            if (imageInfoData.query == null)
-                            {
-                                await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_image_fetch_failed")).ConfigureAwait(false);
-                            }
-                            else
-                            {
-                                imageUrl = imageInfoData.query.pages[0].imageinfo[0].url;
-                            }
+                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
+                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a friend page has multiple Friend pictures, this will get the corrct image
+                            imageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
                         }
-                        else
-                        {
-                            await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_image_fetch_failed")).ConfigureAwait(false);
-                        }
+
                         await msg.DeleteAsync().ConfigureAwait(false);
                         // footer 
                         var footer = new EmbedFooterBuilder();
@@ -157,6 +149,7 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false))
                         {
                             var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
+                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a friend page has multiple Friend pictures, this will get the corrct image
                             var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
