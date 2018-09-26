@@ -3467,5 +3467,14 @@
       "{0}randomfriend",
       "{0}randfr -n"
     ]
+  },
+  "wip": {
+    "cmd": "wip",
+    "desc": "Get a random WIP page from Japari Library.",
+    "usage": [
+      "{0}wip",
+      "{0}wip -p",
+      "{0}wip -n -p"
+    ]
   }
 }
