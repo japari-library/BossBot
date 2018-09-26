@@ -175,14 +175,7 @@ namespace NadekoBot.Modules.Searches
                             .WithFooter(footer)
                             ).ConfigureAwait(false);
                         }
-
-
                     }
-
-
-
-
-
                 }
             }
         }
