@@ -3470,11 +3470,13 @@
   },
   "wip": {
     "cmd": "wip",
-    "desc": "Get a random WIP page from Japari Library.",
+    "desc": "Get a random WIP page from Japari Library. NOTE: Only use 1 of the options that specify the category.",
     "usage": [
       "{0}wip",
       "{0}wip -p",
-      "{0}wip -n -p"
+      "{0}wip -n -p",
+      "{0}wip -i",
+      "{0}wip -a"
     ]
   }
 }

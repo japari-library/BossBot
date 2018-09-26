@@ -189,8 +189,15 @@ namespace NadekoBot.Modules.Searches
                 string wipPage; //we need to declare this here to use it out of the do-while loop
 
                 string redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Missing_Content"; //by default look in the Missing_Content category
+                //if requested, look for a specific kind of WIP page (unfortunately only 1 of these is possible at a time)
+                if (opts.isIrl) {
+                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_RL_Info";
+                }
+                if (opts.isAppearance) {
+                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_Appearance";
+                }
                 if (opts.isPriority) {
-                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Priority_Articles"; //if requested, look in the Priority_Articles category
+                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Priority_Articles";
                 }
 
                 using (var http = _httpFactory.CreateClient())
