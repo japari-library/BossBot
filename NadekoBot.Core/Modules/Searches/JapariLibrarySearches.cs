@@ -153,7 +153,7 @@ namespace NadekoBot.Modules.Searches
                             var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
-                            var friendInfo = friendInfoElem.InnerHtml; //get friend info
+                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml;
 
                             var friendNameElem = document.QuerySelector("#firstHeading");
                             var friendName = friendNameElem.InnerHtml; //get friend name
@@ -241,8 +241,9 @@ namespace NadekoBot.Modules.Searches
                             var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get wip image or a default one if one cannot be loaded
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
-                            var friendInfo = friendInfoElem.InnerHtml; //get page info
-
+                            // check if we can get the description or not, if not, just say the description is unavailable
+                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml; 
+                            
                             var friendNameElem = document.QuerySelector("#firstHeading");
                             var friendName = friendNameElem.InnerHtml; //get page name
 
