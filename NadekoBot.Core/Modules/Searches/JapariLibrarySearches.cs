@@ -110,10 +110,10 @@ namespace NadekoBot.Modules.Searches
             }
 
             [NadekoCommand, Usage, Description, Aliases]
-            [NadekoOptions(typeof(SearchOptions))]
+            [NadekoOptions(typeof(FriendSearchOptions))]
             public async Task RandomFriend(params string[] args)
             {
-                var (opts, _) = OptionsParser.ParseFrom(new SearchOptions(), args); //parse options, to be used to check if the result should be unembedded
+                var (opts, _) = OptionsParser.ParseFrom(new FriendSearchOptions(), args); //parse options, to be used to check if the result should be unembedded
 
                 var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
                 string friendPage; //we need to declare this here to use it out of the do-while loop
@@ -153,7 +153,7 @@ namespace NadekoBot.Modules.Searches
                             var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
-                            var friendInfo = friendInfoElem.InnerHtml; //get friend info
+                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml;
 
                             var friendNameElem = document.QuerySelector("#firstHeading");
                             var friendName = friendNameElem.InnerHtml; //get friend name
@@ -175,14 +175,96 @@ namespace NadekoBot.Modules.Searches
                             .WithFooter(footer)
                             ).ConfigureAwait(false);
                         }
-
-
                     }
+                }
+            }
 
+            [NadekoCommand, Usage, Description, Aliases]
+            [NadekoOptions(typeof(RandomWIPOptions))]
+            public async Task WIP(params string[] args)
+            {
+                var (opts, _) = OptionsParser.ParseFrom(new RandomWIPOptions(), args); //parse options, to be used to check if the result should be unembedded
 
+                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
+                string wipPage; //we need to declare this here to use it out of the do-while loop
 
+                string redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Missing_Content"; //by default look in the Missing_Content category
+                //if requested, look for a specific kind of WIP page (unfortunately only 1 of these is possible at a time)
+                if (opts.isIrl) {
+                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_RL_Info";
+                }
+                if (opts.isAppearance) {
+                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_Appearance";
+                }
+                if (opts.isPriority) {
+                    redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Priority_Articles";
+                }
 
+                using (var http = _httpFactory.CreateClient())
+                {
+                    do
+                    {
+                        try
+                        {
+                            var response = await http.GetAsync(redirPage).ConfigureAwait(false);
+                            var location = response.Headers.Location; //the redirect isn't automatically followed, you have to dig in the response header to find out what the page actually is
+                            wipPage = location.AbsoluteUri;
+                        }
+                        catch (System.Net.Http.HttpRequestException)
+                        {
+                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                            return;
+                        }
+                        wipPage = Regex.Replace(wipPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
 
+                    } while (wipPage.Contains("Category:")); //Category pages count as Friend pages but we don't want none of that
+
+                    if (opts.IsUnembedded)
+                    {
+                        wipPage = "<" + wipPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
+
+                        string successText = "jl_randomwip_success";
+                        if (opts.isPriority) {
+                            successText = "jl_randomwip_priority_success";
+                        }
+                        await msg.ModifyAsync(m => m.Content = GetText(successText, wipPage)).ConfigureAwait(false);
+                    }
+                    else //make it embedded
+                    {
+
+                        var config = Configuration.Default.WithDefaultLoader();
+
+                        using (var document = await BrowsingContext.New(config).OpenAsync(wipPage).ConfigureAwait(false))
+                        {
+                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
+                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a wip page has multiple pictures, this will get the correct image
+                            var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get wip image or a default one if one cannot be loaded
+
+                            var friendInfoElem = document.QuerySelector("#mw-content-text > p");
+                            // check if we can get the description or not, if not, just say the description is unavailable
+                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml; 
+                            
+                            var friendNameElem = document.QuerySelector("#firstHeading");
+                            var friendName = friendNameElem.InnerHtml; //get page name
+
+                            friendName = Regex.Replace(friendName, "<[^>]*>", "");
+                            friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
+
+                            // footer 
+                            var footer = new EmbedFooterBuilder();
+                            footer.Text = "Japari Library";
+                            footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+
+                            await msg.DeleteAsync();
+                            await Context.Channel.EmbedAsync(new EmbedBuilder().WithOkColor() //make a small embed
+                            .WithTitle(friendName)
+                            .WithDescription(friendInfo)
+                            .WithThumbnailUrl(friendImageUrl)
+                            .WithUrl(wipPage)
+                            .WithFooter(footer)
+                            ).ConfigureAwait(false);
+                        }
+                    }
                 }
             }
         }
