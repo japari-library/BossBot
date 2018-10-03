@@ -29,8 +29,6 @@ namespace NadekoBot.Core.Services
         {
             string content = Regex.Replace(msg.Content, "<(.*?[0-9]*)?>", " "); //remove emotes from message
 
-			//TODO: remove emojis
-
             if (channel.IsNsfw || content == "") return Task.FromResult(0); //let's not log messages from NSFW channels or ones that are empty
 
             messageList.Enqueue(content); //add new message
@@ -39,16 +37,6 @@ namespace NadekoBot.Core.Services
                 messageList.Dequeue(); //remove first value if there are too many of them
             }
 
-			
-			// For debug only
-			if (content == "dump")
-            {
-				foreach (string s in messageList)
-                {
-                    Console.OutputEncoding = System.Text.Encoding.UTF8;
-                    System.Console.WriteLine(s);
-                }
-            }
             return Task.FromResult(0);
         }
     }
