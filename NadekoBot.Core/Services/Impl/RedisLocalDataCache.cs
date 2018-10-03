@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 
 namespace NadekoBot.Core.Services.Impl
 {
@@ -24,10 +23,6 @@ namespace NadekoBot.Core.Services.Impl
         private const string pokemonListFile = "data/pokemon/pokemon_list7.json";
         private const string pokemonMapPath = "data/pokemon/name-id_map4.json";
         private const string questionsFile = "data/trivia_questions.json";
-		
-		//ZGD: URL for FriendPages.json for trivia-friends
-		
-		private const string friendListUrl = "http://178.128.31.42/friends/FriendPages.json";
 
         public IReadOnlyDictionary<string, SearchPokemon> Pokemons
         {
@@ -76,20 +71,6 @@ namespace NadekoBot.Core.Services.Impl
                 Set("pokemon_map", value);
             }
         }
-		
-		//ZGD: implementation of FriendMap, used in trivia-friends functionality.
-		public IReadOnlyDictionary<int, FriendsNameId> FriendMap
-        {
-            get
-            {
-                return Get<Dictionary<int, FriendsNameId>>("friend_map");
-            }
-            private set
-            {
-                Set("friend_map", value);
-            }
-        }
-		
 
         public RedisLocalDataCache(ConnectionMultiplexer con, IBotCredentials creds, int shardId)
         {
@@ -122,14 +103,6 @@ namespace NadekoBot.Core.Services.Impl
                     TriviaQuestions = JsonConvert.DeserializeObject<TriviaQuestion[]>(File.ReadAllText(questionsFile));
                     PokemonMap = JsonConvert.DeserializeObject<PokemonNameId[]>(File.ReadAllText(pokemonMapPath))
                             .ToDictionary(x => x.Id, x => x.Name);
-					
-					//ZGD: Friend list from URL into local cache, into Dictionary<> data type
-					//to mimic what's being used in the Pokemon trivia.
-					WebClient wc = new WebClient();					
-					int friendCounter = 0;					
-                    FriendMap = JsonConvert.DeserializeObject<FriendsNameId[]>(wc.DownloadString(friendListUrl))
-                            .ToDictionary(x => friendCounter++, x => x);
-					//ZGD: end of Friend list code
                 }
                 catch (Exception ex)
                 {

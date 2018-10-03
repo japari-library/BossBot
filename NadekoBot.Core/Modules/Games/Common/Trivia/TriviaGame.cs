@@ -74,10 +74,7 @@ namespace NadekoBot.Modules.Games.Common.Trivia
                 _triviaCancelSource = new CancellationTokenSource();
 
                 // load question
-				//ZGD: modified CurrentQuestion constructor to accommodate trivia-friends. Commented original line below.
-                //CurrentQuestion = _questionPool.GetRandomQuestion(OldQuestions, _options.IsPokemon);
-				CurrentQuestion = _questionPool.GetRandomQuestion(OldQuestions, _options.IsPokemon, _options.IsFriends, _options.IsFriendsHard);
-				
+                CurrentQuestion = _questionPool.GetRandomQuestion(OldQuestions, _options.IsPokemon);
                 if (string.IsNullOrWhiteSpace(CurrentQuestion?.Answer) || string.IsNullOrWhiteSpace(CurrentQuestion.Question))
                 {
                     await Channel.SendErrorAsync(GetText("trivia_game"), GetText("failed_loading_question")).ConfigureAwait(false);
