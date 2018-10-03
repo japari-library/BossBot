@@ -54,7 +54,7 @@ namespace NadekoBot.Core.Services
             
             foreach (string w in words)
             {
-                if (!(w == ""))
+                if (w != "")
                 {
                     messageList.Enqueue(w); //add non-empty words
                 }
