@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 
 namespace NadekoBot.Core.Services
 {
-	public class MessageLoggerService : INService
+	public class MessageLoggerService : IMessageLoggerService
     {
         private readonly int MAX_LOGGED_MESSAGES = 500; //technically not a magic number if i store it in a variable
         private Queue<string> messageList; //messages will be stored here
@@ -18,6 +18,11 @@ namespace NadekoBot.Core.Services
         public MessageLoggerService()
         {
             messageList = new Queue<string>();
+        }
+
+        public Queue<string> MessageList
+        {
+            get { return messageList; }
         }
 
 		public Task LogUserMessage(SocketUserMessage msg, ITextChannel channel)

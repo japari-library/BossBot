@@ -41,7 +41,7 @@ namespace NadekoBot.Core.Services
         private IEnumerable<ILateExecutor> _lateExecutors;
 
         //japari original, message logger for word cloud use
-        private MessageLoggerService _messagelogger;
+        private IMessageLoggerService _messagelogger;
 
         public string DefaultPrefix { get; private set; }
         private ConcurrentDictionary<ulong, string> _prefixes { get; } = new ConcurrentDictionary<ulong, string>();
@@ -59,7 +59,7 @@ namespace NadekoBot.Core.Services
         public CommandHandler(DiscordSocketClient client, DbService db,
             IBotConfigProvider bcp, CommandService commandService,
             IBotCredentials credentials, NadekoBot bot, IServiceProvider services,
-            MessageLoggerService messageLogger) //add message logger
+            IMessageLoggerService messageLogger) //add message logger
         {
             _client = client;
             _commandService = commandService;
