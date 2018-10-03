@@ -29,7 +29,7 @@ namespace NadekoBot.Modules.Games
                 string messagesString = "";
                 foreach (string s in messages)
                 {
-                    messagesString += s + " ";
+                    messagesString += s + ", ";
                 }
 
                 var msg = await Context.Channel.SendMessageAsync(messagesString).ConfigureAwait(false);
