@@ -13,6 +13,12 @@ namespace NadekoBot.Core.Services
 	public class MessageLoggerService : IMessageLoggerService
     {
         private readonly int MAX_LOGGED_MESSAGES = 500; //technically not a magic number if i store it in a variable
+        
+        private List<ulong> ignoredChannelIDs = new List<ulong>() //specific channels to ignore, by ID
+        {
+            //insert ids here
+        };
+
         private Queue<string> messageList; //messages will be stored here
 
         public MessageLoggerService()
@@ -28,8 +34,21 @@ namespace NadekoBot.Core.Services
 		public Task LogUserMessage(SocketUserMessage msg, ITextChannel channel)
         {
             string content = Regex.Replace(msg.Content, "<(.*?[0-9]*)?>", " "); //remove emotes from message
+            
+            bool isIgnoredChannel = false;
+            if (channel.IsNsfw) //ignore all NSFW channels
+            {
+                isIgnoredChannel = true;
+            }
+            foreach (ulong i in ignoredChannelIDs) //ignore specific channels
+            {
+                if (channel.Id == i)
+                {
+                    isIgnoredChannel = true;
+                }
+            }
 
-            if (channel.IsNsfw || content == "") return Task.FromResult(0); //let's not log messages from NSFW channels or ones that are empty
+            if (isIgnoredChannel || content == "") return Task.FromResult(0); //ignore empty messages as well as ones from ignored channels
 
             messageList.Enqueue(content); //add new message
 			if (messageList.Count >= MAX_LOGGED_MESSAGES)
