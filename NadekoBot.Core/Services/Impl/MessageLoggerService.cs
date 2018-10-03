@@ -51,9 +51,14 @@ namespace NadekoBot.Core.Services
             if (isIgnoredChannel || content == "") return Task.FromResult(0); //ignore empty messages as well as ones from ignored channels
 
             string[] words = content.Split(' ');
+            
             foreach (string w in words)
             {
-                messageList.Enqueue(w); //add words
+                if (!(w == ""))
+                {
+                    messageList.Enqueue(w); //add non-empty words
+                }
+                
             }
 
 			while (messageList.Count >= MAX_LOGGED_WORDS)
