@@ -12,7 +12,7 @@ namespace NadekoBot.Core.Services
 {
 	public class MessageLoggerService : IMessageLoggerService
     {
-        private readonly int MAX_LOGGED_MESSAGES = 500; //technically not a magic number if i store it in a variable
+        private readonly int MAX_LOGGED_WORDS = 5000; //technically not a magic number if i store it in a variable
         
         private List<ulong> ignoredChannelIDs = new List<ulong>() //specific channels to ignore, by ID
         {
@@ -50,10 +50,15 @@ namespace NadekoBot.Core.Services
 
             if (isIgnoredChannel || content == "") return Task.FromResult(0); //ignore empty messages as well as ones from ignored channels
 
-            messageList.Enqueue(content); //add new message
-			if (messageList.Count >= MAX_LOGGED_MESSAGES)
+            string[] words = content.Split(' ');
+            foreach (string w in words)
             {
-                messageList.Dequeue(); //remove first value if there are too many of them
+                messageList.Enqueue(w); //add words
+            }
+
+			while (messageList.Count >= MAX_LOGGED_WORDS)
+            {
+                messageList.Dequeue(); //remove values at the beginning if there are too many of them
             }
 
             return Task.FromResult(0);
