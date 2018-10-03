@@ -54,9 +54,9 @@ namespace NadekoBot.Core.Services
             
             foreach (string w in words)
             {
-                if (w != "" && w[0] != ('.' || '-'))
+                if (w != "" && w[0] != '.' && w[0] != '-')
                 {
-                    messageList.Enqueue(w); //add non-empty words, or those that are most likely meant to be parsed by bots (starting with . or -)
+                    messageList.Enqueue(w); //add non-empty words, or those that are most likely meant to be parsed by bots
                 }
                 
             }
