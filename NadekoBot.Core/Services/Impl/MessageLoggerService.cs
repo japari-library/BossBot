@@ -64,6 +64,9 @@ namespace NadekoBot.Core.Services
 		public Task LogUserMessage(SocketUserMessage msg, ITextChannel channel)
         {
             string content = Regex.Replace(msg.Content, "<(.*?[0-9]*)?>", " "); //remove emotes from message
+            content = Regex.Replace(content, "www*", " "); //remove URLs from message
+            content = Regex.Replace(content, "http*", " ");
+            content = Regex.Replace(content, "trpn*", " "); //remove trpn tags from message
             
             if (channel.IsNsfw) //ignore all NSFW channels
             {
