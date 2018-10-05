@@ -45,7 +45,12 @@ namespace NadekoBot.Core.Services
             441700588061982730, //#japari-port
             321275668551958530, //#japari-arcade
             489295286414475275, //#japari-theatre
-            482776248683331594 //#japari-gallery
+            482776248683331594, //#japari-gallery
+
+            //for testing purposes
+            489799195642036225, //#general
+            490298280496988160, //#channel2
+            490298423522885632 //#channel3 (going to be ignored anyway since it's NSFW tagged)
 
         };
 
