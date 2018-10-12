@@ -10,7 +10,7 @@ while ($true) {
 		break
 	} elseif (Get-Process -Id $process.Id) {
 		echo "Process is running, killing!"
-		$process.CloseMainWindow()
+		taskkill /T /F /PID $process.Id # kill process tree
 	} else {
 		echo "Process exited with $($process.ExitCode)"
 	}
