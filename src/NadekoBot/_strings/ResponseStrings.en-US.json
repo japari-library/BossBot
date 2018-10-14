@@ -994,5 +994,7 @@
   "searches_jl_wikisearch_success": "📖 Article Found!\n Search Term: ``{0}`` Revision : ``{1}`` \n Revision By : ``{2}`` Revision ID : ``{3}``\n  {4}",
   "searches_jl_wikisearch_image_fetch_failed": "⚠ WARNING: Unable to fetch the image",
   "searches_jl_randomfriend_searching": "🎲 Throwing dice...",
-  "searches_jl_randomfriend_success": "📖 Random Friend Found!\n{0}"
+  "searches_jl_randomfriend_success": "📖 Random Friend Found!\n{0}",
+  "searches_jl_randomwip_success": "🛠️ Random WIP Article Found!\n{0}",
+  "searches_jl_randomwip_priority_success": "🛠️ Random Priority Article Found!\n{0}"
 }

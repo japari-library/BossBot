@@ -3,7 +3,7 @@ using NadekoBot.Core.Common;
 
 namespace NadekoBot.Core.Modules.Searches.Common
 {
-    public class SearchOptions : INadekoCommandOptions
+    public class FriendSearchOptions : INadekoCommandOptions
     {
         //Option to make search results unembedded
         [Option('n', "unembed", Required = false, Default = false, HelpText = "Unembed the link")]
