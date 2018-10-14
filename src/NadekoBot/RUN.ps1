@@ -2,6 +2,7 @@ $scheduledRestartTime = 5400 # time in seconds
 
 while ($true) {
 	$process = Start-Process "dotnet.exe" -ArgumentList "run -c release" -PassThru -NoNewWindow
+	$handle = $process.Handle # cache the process handle, otherwise we won't be able to access $process.ExitCode
 	$wait = Wait-Process -Id $process.Id -Timeout $scheduledRestartTime
 	
 	echo "The bot was shutdown..."
@@ -10,7 +11,7 @@ while ($true) {
 		break
 	} elseif (Get-Process -Id $process.Id) {
 		echo "Process is running, killing!"
-		$process.CloseMainWindow()
+		taskkill /T /F /PID $process.Id # kill process tree
 	} else {
 		echo "Process exited with $($process.ExitCode)"
 	}
