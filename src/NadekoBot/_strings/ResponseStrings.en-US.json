@@ -988,6 +988,7 @@
   "administration_group_name_added": "Group #{0} now has a name: {1}",
   "administration_group_name_removed": "Group #{0} no longer has a name.",
   "searches_jl_wikisearch_query_empty": "Your query is empty. Please type what article you want to find!",
+  "searches_jl_wikisearch_query_too_long": "Your query is too ＬＯＮＧ (more than 1024 characters)!",
   "searches_jl_wikisearch_article_not_found": "⚠ No article was found.",
   "searches_jl_wikisearch_error": "⚠ Failed to contact Japari Library server",
   "searches_jl_wikisearch_searching": "🔍 Searching the wiki...",

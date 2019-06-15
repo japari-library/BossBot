@@ -38,11 +38,16 @@ namespace NadekoBot.Modules.Searches
             {
                 query = query?.Trim();
 
-                // reply to the user if the query is empty
+                // reply to the user if the query is empty or over 1024 characters
                 if (string.IsNullOrWhiteSpace(query))
                 {
                     await ReplyErrorLocalized("jl_wikisearch_query_empty").ConfigureAwait(false); return;
                 }
+                else if (query.Length > 1024)
+                {
+                    await ReplyErrorLocalized("jl_wikisearch_query_too_long").ConfigureAwait(false); return;
+                }
+
                 var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching")).ConfigureAwait(false);
                 // search with the query
                 using (var http = _httpFactory.CreateClient())
