@@ -41,14 +41,14 @@ namespace NadekoBot.Modules.Searches
                 // reply to the user if the query is empty or over 1024 characters
                 if (string.IsNullOrWhiteSpace(query))
                 {
-                    await ReplyErrorLocalized("jl_wikisearch_query_empty").ConfigureAwait(false); return;
+                    await ReplyErrorLocalized("kf_wikisearch_query_empty").ConfigureAwait(false); return;
                 }
                 else if (query.Length > 1024)
                 {
-                    await ReplyErrorLocalized("jl_wikisearch_query_too_long").ConfigureAwait(false); return;
+                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
                 }
 
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching")).ConfigureAwait(false);
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
                 // search with the query
                 using (var http = _httpFactory.CreateClient())
                 {
@@ -61,7 +61,7 @@ namespace NadekoBot.Modules.Searches
                         // reply to the user if their query cannot be found
                         if (data.query == null)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_article_not_found")).ConfigureAwait(false);
                             return;
                         }
                         var queryPage = data.query.pages[0];
@@ -71,7 +71,7 @@ namespace NadekoBot.Modules.Searches
                         var parseData = JsonConvert.DeserializeObject<JapariLibraryParseAPIModel>(parseJson);
                         if (parseData.parse == null)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_article_not_found")).ConfigureAwait(false);
                             return;
                         }
                         var parsePage = parseData.parse;
@@ -110,7 +110,7 @@ namespace NadekoBot.Modules.Searches
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
-                        await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                        await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_error")).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -122,7 +122,7 @@ namespace NadekoBot.Modules.Searches
             {
                 var (opts, _) = OptionsParser.ParseFrom(new FriendSearchOptions(), args); //parse options, to be used to check if the result should be unembedded
 
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_randomfriend_searching")).ConfigureAwait(false);
                 string friendPage; //we need to declare this here to use it out of the do-while loop
                 using (var http = _httpFactory.CreateClient())
                 {
@@ -136,7 +136,7 @@ namespace NadekoBot.Modules.Searches
                         }
                         catch (System.Net.Http.HttpRequestException)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_error")).ConfigureAwait(false);
                             return;
                         }
                         friendPage = Regex.Replace(friendPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
@@ -146,7 +146,7 @@ namespace NadekoBot.Modules.Searches
                     if (opts.IsUnembedded)
                     {
                         friendPage = "<" + friendPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
-                        await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
+                        await msg.ModifyAsync(m => m.Content = GetText("kf_randomfriend_success", friendPage)).ConfigureAwait(false);
                     }
                     else //make it embedded
                     {
@@ -192,7 +192,7 @@ namespace NadekoBot.Modules.Searches
             {
                 var (opts, _) = OptionsParser.ParseFrom(new RandomWIPOptions(), args); //parse options, to be used to check if the result should be unembedded
 
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_randomfriend_searching")).ConfigureAwait(false);
                 string wipPage; //we need to declare this here to use it out of the do-while loop
 
                 string redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Missing_Content"; //by default look in the Missing_Content category
@@ -219,7 +219,7 @@ namespace NadekoBot.Modules.Searches
                         }
                         catch (System.Net.Http.HttpRequestException)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_error")).ConfigureAwait(false);
                             return;
                         }
                         wipPage = Regex.Replace(wipPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
@@ -230,9 +230,9 @@ namespace NadekoBot.Modules.Searches
                     {
                         wipPage = "<" + wipPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
 
-                        string successText = "jl_randomwip_success";
+                        string successText = "kf_randomwip_success";
                         if (opts.isPriority) {
-                            successText = "jl_randomwip_priority_success";
+                            successText = "kf_randomwip_priority_success";
                         }
                         await msg.ModifyAsync(m => m.Content = GetText(successText, wipPage)).ConfigureAwait(false);
                     }
