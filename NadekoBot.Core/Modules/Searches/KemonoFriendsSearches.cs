@@ -25,10 +25,10 @@ namespace NadekoBot.Modules.Searches
 {
     public partial class Searches
     {
-        public class JapariLibrarySearchCommand : NadekoSubmodule<SearchesService>
+        public class KemonoFriendsSearchCommand : NadekoSubmodule<SearchesService>
         {
             private readonly IHttpClientFactory _httpFactory;
-            public JapariLibrarySearchCommand(IHttpClientFactory factory)
+            public KemonoFriendsSearchCommand(IHttpClientFactory factory)
             {
                 _httpFactory = factory;
             }
