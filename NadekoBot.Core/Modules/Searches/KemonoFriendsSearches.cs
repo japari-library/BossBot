@@ -92,6 +92,8 @@ namespace NadekoBot.Modules.Searches
                         var footer = new EmbedFooterBuilder();
                         footer.Text = "Japari Library";
                         footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+                        // truncated version of the query (max 50 characters + ellipsis) to be shown back
+                        string truncatedQuery = query.Length <= 50 ? query : query.Substring(0, 50) + "...";
                         // send with embed 
                         await Context.Channel.EmbedAsync(new EmbedBuilder()
                         .WithFooter(footer)
@@ -100,7 +102,7 @@ namespace NadekoBot.Modules.Searches
                         .WithDescription(parsePage.properties.description)
                         .WithThumbnailUrl(imageUrl)
                         .WithUrl(queryPage.fullurl)
-                        .AddField("Search Term", query, inline: true)
+                        .AddField("Search Term", truncatedQuery, inline: true)
                         .AddField("Revision", queryPage.revisions[0].timestamp, inline: true)
                         .AddField("Revision By", queryPage.revisions[0].user, inline: true)
                         .AddField("Revision ID", queryPage.revisions[0].revid, inline: true)
