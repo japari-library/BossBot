@@ -77,7 +77,7 @@ namespace NadekoBot.Modules.Searches
                         var parsePage = parseData.parse;
                         var imageUrl = "";
                         // get image because mediawiki doesn't want to expose image URL
-                        
+
                         var config = Configuration.Default.WithDefaultLoader();
 
                         using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
@@ -197,13 +197,16 @@ namespace NadekoBot.Modules.Searches
 
                 string redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Missing_Content"; //by default look in the Missing_Content category
                 //if requested, look for a specific kind of WIP page (unfortunately only 1 of these is possible at a time)
-                if (opts.isIrl) {
+                if (opts.isIrl)
+                {
                     redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_RL_Info";
                 }
-                if (opts.isAppearance) {
+                if (opts.isAppearance)
+                {
                     redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_Appearance";
                 }
-                if (opts.isPriority) {
+                if (opts.isPriority)
+                {
                     redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Priority_Articles";
                 }
 
@@ -231,7 +234,8 @@ namespace NadekoBot.Modules.Searches
                         wipPage = "<" + wipPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
 
                         string successText = "kf_randomwip_success";
-                        if (opts.isPriority) {
+                        if (opts.isPriority)
+                        {
                             successText = "kf_randomwip_priority_success";
                         }
                         await msg.ModifyAsync(m => m.Content = GetText(successText, wipPage)).ConfigureAwait(false);
@@ -249,8 +253,8 @@ namespace NadekoBot.Modules.Searches
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
                             // check if we can get the description or not, if not, just say the description is unavailable
-                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml; 
-                            
+                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml;
+
                             var friendNameElem = document.QuerySelector("#firstHeading");
                             var friendName = friendNameElem.InnerHtml; //get page name
 
@@ -271,6 +275,65 @@ namespace NadekoBot.Modules.Searches
                             .WithFooter(footer)
                             ).ConfigureAwait(false);
                         }
+                    }
+                }
+            }
+
+            [NadekoCommand, Usage, Description, Aliases]
+            public async Task RateUp([Remainder] string query = null)
+            {
+                query = query?.Trim();
+
+                // reply to the user if the query is empty or over 1024 characters
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    await ReplyErrorLocalized("kf_rateup_query_empty").ConfigureAwait(false); return;
+                }
+                else if (query.Length > 1024)
+                {
+                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
+                }
+
+                Console.WriteLine(query);
+                // find friend and area (if given) name from query
+                string[] arguments = query.Split(' ');
+                for (int i = 0; i < arguments.Length; i++)
+                {
+                    arguments[i] = Uri.EscapeDataString(arguments[i]); // escape all arguments
+                }
+                string friendName = arguments[0];
+                string areaName = arguments.Length > 1 ? arguments[1] : null;
+                Console.WriteLine(arguments);
+
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
+                // search with the query
+                using (var http = _httpFactory.CreateClient())
+                {
+                    try
+                    {
+                        string partialQuery = areaName != null ? "friend={0}&area={1}" : "friend={0}";
+                        // search with the query
+                        string queryApiUrl = "http://www.smidgeindustriesltd.com/kf/dropdata/botdata.php?" + partialQuery;
+                        // String.Format will ignore the areaName if it isn't needed
+                        string queryResponse = await http.GetStringAsync(String.Format(queryApiUrl, friendName, areaName)).ConfigureAwait(false);
+                        Console.WriteLine(String.Format(queryApiUrl, friendName, areaName));
+
+                        Queue<string> splitQueryResponse = new Queue<string>();
+                        for (int i = 0; i < queryResponse.Length; i += 2000)
+                        {
+                            splitQueryResponse.Enqueue(queryResponse.Substring(i, Math.Min(queryResponse.Length - i, 2000)));
+                        }
+
+                        await msg.ModifyAsync(m => m.Content = GetText("simple", splitQueryResponse.Dequeue())).ConfigureAwait(false);
+                        while (splitQueryResponse.Count != 0)
+                        {
+                            await Context.Channel.SendMessageAsync(GetText("simple", splitQueryResponse.Dequeue())).ConfigureAwait(false);
+                        }
+                    }
+                    catch (System.Net.Http.HttpRequestException)
+                    {
+                        await msg.ModifyAsync(m => m.Content = GetText("kf_rateup_commmunication_error")).ConfigureAwait(false);
+                        return;
                     }
                 }
             }
