@@ -9,6 +9,11 @@ namespace NadekoBot.Core.Modules.Searches.Common
         public string errorCode { get; set; }
         public ErrorInfo errorInfo { get; set; }
         public List<FriendRateupData> friendRateups { get; set; }
+        public RateupQueryAPIModel()
+        {
+            errorInfo = new ErrorInfo();
+            friendRateups = new List<FriendRateupData>();
+        }
 
         public class ErrorInfo
         {
@@ -23,33 +28,34 @@ namespace NadekoBot.Core.Modules.Searches.Common
             public string[] items { get; set; }
         }
 
-        public static RateupQueryAPIModel ConvertString(string str)
+        public static RateupQueryAPIModel ConvertToModel(string str)
         {
-            RateupQueryAPIModel parsedData = new RateupQueryAPIModel();
-
+            RateupQueryAPIModel parsedToModel = new RateupQueryAPIModel();
             Queue<string> lines = new Queue<string>(str.Split("<br>"));
 
-            parsedData.errorCode = lines.Dequeue();
-            if (!parsedData.errorCode.Equals("OK"))
+            // Get error code, and error info if one is received
+            parsedToModel.errorCode = lines.Dequeue();
+            if (!parsedToModel.errorCode.Equals("OK"))
             {
-                parsedData.errorInfo.basicErrorInfo = lines.Dequeue();
-                parsedData.errorInfo.debugInfo = lines.Dequeue();
-                parsedData.friendRateups = null;
-                return parsedData;
+                parsedToModel.errorInfo.basicErrorInfo = lines.Dequeue();
+                parsedToModel.errorInfo.debugInfo = lines.Dequeue();
+                parsedToModel.friendRateups = null; // no friend results given
+                return parsedToModel;
             }
 
-            parsedData.errorInfo = null;
-            while (lines.Count > 0)
+            parsedToModel.errorInfo = null; // no errors reported
+            while (lines.Count > 1) // The last line is a rogue empty one after the last "<br>" that can be ignored
             {
+                // Get trio of Friend name, area and items
                 FriendRateupData rateupData = new FriendRateupData();
                 rateupData.friendName = lines.Dequeue();
                 rateupData.area = lines.Dequeue();
                 rateupData.items = lines.Dequeue().Split(',');
 
-                parsedData.friendRateups.Add(rateupData);
+                parsedToModel.friendRateups.Add(rateupData);
             }
 
-            return parsedData;
+            return parsedToModel;
         }
     }
 }
