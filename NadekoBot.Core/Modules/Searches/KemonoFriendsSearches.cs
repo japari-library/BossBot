@@ -294,7 +294,6 @@ namespace NadekoBot.Modules.Searches
                     await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
                 }
 
-                Console.WriteLine(query);
                 // find friend and area (if given) name from query
                 string[] arguments = query.Split(' ');
                 for (int i = 0; i < arguments.Length; i++)
@@ -303,10 +302,9 @@ namespace NadekoBot.Modules.Searches
                 }
                 string friendName = arguments[0];
                 string areaName = arguments.Length > 1 ? arguments[1] : null;
-                Console.WriteLine(arguments);
 
                 var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
-                // search with the query
+
                 using (var http = _httpFactory.CreateClient())
                 {
                     try
@@ -316,9 +314,47 @@ namespace NadekoBot.Modules.Searches
                         string queryApiUrl = "http://www.smidgeindustriesltd.com/kf/dropdata/botdata.php?" + partialQuery;
                         // String.Format will ignore the areaName if it isn't needed
                         string queryResponse = await http.GetStringAsync(String.Format(queryApiUrl, friendName, areaName)).ConfigureAwait(false);
-                        Console.WriteLine(String.Format(queryApiUrl, friendName, areaName));
 
-                        Queue<string> splitQueryResponse = new Queue<string>();
+                        RateupQueryResult data = RateupQueryResult.ConvertToModel(queryResponse);
+                        string errorCode = data.errorCode;
+
+                        // WIP
+                        if (!errorCode.Equals("OK"))
+                        {
+                            await msg.ModifyAsync(m => m.Content = GetText("simple", data.errorInfo.basicErrorInfo)).ConfigureAwait(false);
+                            return;
+                        }
+
+                        await msg.DeleteAsync();
+
+                        var builder = new EmbedBuilder();
+                        builder.WithOkColor();
+                        builder.WithTitle("Results:");
+                        foreach(var friendRateup in data.friendRateups)
+                        {
+                            string itemInfo = "";
+                            foreach(var itemsByArea in friendRateup.itemsByArea)
+                            {
+                                /*
+                                * U+2800 is a whitespace character (https://www.compart.com/en/unicode/U+2800)
+                                * This is the only way I found for a whitespace character not to be ignored at the start of an embed field (or at all on desktop).
+                                * This way we can properly format the massive blob of text that is the rateup results across devices.
+                                * I left it as a variable in the hope it can be changed if whitespace ever acts as it should again.
+                                */
+                                itemInfo += "\u2800" + "**" + itemsByArea.Key + "**" + "\n"
+                                    + string.Join(", ", itemsByArea.Value) + "\n";
+                            }
+
+                            /*
+                             * The final newline is ignored without that character...
+                             */
+                            builder.AddField("**" + friendRateup.friendName + "**", "  " + itemInfo + "\n────────────────────", true); 
+
+                        }
+
+                        await Context.Channel.EmbedAsync(builder).ConfigureAwait(false);
+
+                        /*Queue<string> splitQueryResponse = new Queue<string>();
                         for (int i = 0; i < queryResponse.Length; i += 2000)
                         {
                             splitQueryResponse.Enqueue(queryResponse.Substring(i, Math.Min(queryResponse.Length - i, 2000)));
@@ -328,7 +364,7 @@ namespace NadekoBot.Modules.Searches
                         while (splitQueryResponse.Count != 0)
                         {
                             await Context.Channel.SendMessageAsync(GetText("simple", splitQueryResponse.Dequeue())).ConfigureAwait(false);
-                        }
+                        }*/
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
