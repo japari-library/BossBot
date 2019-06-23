@@ -325,46 +325,32 @@ namespace NadekoBot.Modules.Searches
                             return;
                         }
 
-                        await msg.DeleteAsync();
-
-                        var builder = new EmbedBuilder();
-                        builder.WithOkColor();
-                        builder.WithTitle("Results:");
+                        string formattedInfo = "";
                         foreach(var friendRateup in data.friendRateups)
                         {
-                            string itemInfo = "";
+                            formattedInfo += "**__" + friendRateup.friendName + "__**\n\n";
+                            
                             foreach(var itemsByArea in friendRateup.itemsByArea)
                             {
-                                /*
-                                * U+2800 is a whitespace character (https://www.compart.com/en/unicode/U+2800)
-                                * This is the only way I found for a whitespace character not to be ignored at the start of an embed field (or at all on desktop).
-                                * This way we can properly format the massive blob of text that is the rateup results across devices.
-                                * I left it as a variable in the hope it can be changed if whitespace ever acts as it should again.
-                                */
-                                itemInfo += "\u2800" + "**" + itemsByArea.Key + "**" + "\n"
-                                    + string.Join(", ", itemsByArea.Value) + "\n";
+                                if (itemsByArea.Value[0].Equals(""))
+                                {
+                                    continue;
+                                }
+                                formattedInfo += "  " + "**" + itemsByArea.Key + "**\n"
+                                    + "```" +string.Join(", ", itemsByArea.Value) + "```";
                             }
-
-                            /*
-                             * The final newline is ignored without that character...
-                             */
-                            builder.AddField("**" + friendRateup.friendName + "**", "  " + itemInfo + "\n────────────────────", true); 
-
+                            formattedInfo += "\n";
+                        }
+                        if (formattedInfo.Equals(""))
+                        {
+                            formattedInfo = "No rateups found for the searched terms!";
                         }
 
-                        await Context.Channel.EmbedAsync(builder).ConfigureAwait(false);
-
-                        /*Queue<string> splitQueryResponse = new Queue<string>();
-                        for (int i = 0; i < queryResponse.Length; i += 2000)
+                        if(formattedInfo.Length > 2000)
                         {
-                            splitQueryResponse.Enqueue(queryResponse.Substring(i, Math.Min(queryResponse.Length - i, 2000)));
+                            formattedInfo = "Result string too big!";
                         }
-
-                        await msg.ModifyAsync(m => m.Content = GetText("simple", splitQueryResponse.Dequeue())).ConfigureAwait(false);
-                        while (splitQueryResponse.Count != 0)
-                        {
-                            await Context.Channel.SendMessageAsync(GetText("simple", splitQueryResponse.Dequeue())).ConfigureAwait(false);
-                        }*/
+                        await msg.ModifyAsync(m => m.Content = GetText("simple", formattedInfo)).ConfigureAwait(false);
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
