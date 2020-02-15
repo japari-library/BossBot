@@ -89,6 +89,11 @@ namespace NadekoBot.Core.Modules.Searches.Common
                 return ErrorInformation.BasicErrorInfo;
             }
 
+            if (FriendRateups.Count == 0)
+            {
+                return "No rateups found for the given query!";
+            }
+
             const string openingString = "```asciidoc";
             const string closingString = "```";
 
