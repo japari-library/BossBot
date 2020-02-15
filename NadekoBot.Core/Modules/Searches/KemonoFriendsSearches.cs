@@ -6,10 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NadekoBot.Common.Attributes;
-using NadekoBot.Core.Common.Pokemon;
-using NadekoBot.Core.Services;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using System;
 using NadekoBot.Core.Modules.Searches.Common;
@@ -17,9 +14,7 @@ using System.Text.RegularExpressions;
 using NadekoBot.Core.Common; //for OptionParser
 using Configuration = AngleSharp.Configuration; //for parsing html page
 using AngleSharp;
-using AngleSharp.Dom;
 using AngleSharp.Dom.Html;
-using AngleSharp.Parser.Html;
 
 namespace NadekoBot.Modules.Searches
 {
@@ -287,21 +282,19 @@ namespace NadekoBot.Modules.Searches
                 // reply to the user if the query is empty or over 1024 characters
                 if (string.IsNullOrWhiteSpace(query))
                 {
-                    await ReplyErrorLocalized("kf_rateup_query_empty").ConfigureAwait(false); return;
+                    await ReplyErrorLocalized("kf_rateup_query_empty").ConfigureAwait(false);
+                    return;
                 }
                 else if (query.Length > 1024)
                 {
-                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
+                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false);
+                    return;
                 }
 
-                // find friend and area (if given) name from query
-                string[] arguments = query.Split(' ');
-                for (int i = 0; i < arguments.Length; i++)
-                {
-                    arguments[i] = Uri.EscapeDataString(arguments[i]); // escape all arguments
-                }
+                // find friend and area name (if given) from query
+                IList<string> arguments = query.Split(" in ").Select(arg => Uri.EscapeDataString(arg)).ToList();
                 string friendName = arguments[0];
-                string areaName = arguments.Length > 1 ? arguments[1] : null;
+                string areaName = arguments.Count > 1 ? arguments[1] : null;
 
                 var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
 
@@ -310,49 +303,15 @@ namespace NadekoBot.Modules.Searches
                     try
                     {
                         string partialQuery = areaName != null ? "friend={0}&area={1}" : "friend={0}";
-                        // search with the query
                         string queryApiUrl = "http://www.smidgeindustriesltd.com/kf/dropdata/botdata.php?" + partialQuery;
                         // String.Format will ignore the areaName if it isn't needed
-                        string queryResponse = await http.GetStringAsync(String.Format(queryApiUrl, friendName, areaName)).ConfigureAwait(false);
+                        string queryResponse = await http.GetStringAsync(string.Format(queryApiUrl, friendName, areaName)).ConfigureAwait(false);
 
-                        RateupQueryResult data = RateupQueryResult.ConvertToModel(queryResponse);
-                        string errorCode = data.errorCode;
+                        string discordString = RateupQueryResult.ConvertToModel(queryResponse).GetDiscordString();
 
-                        // WIP
-                        if (!errorCode.Equals("OK"))
-                        {
-                            await msg.ModifyAsync(m => m.Content = GetText("simple", data.errorInfo.basicErrorInfo)).ConfigureAwait(false);
-                            return;
-                        }
-
-                        string formattedInfo = "";
-                        foreach(var friendRateup in data.friendRateups)
-                        {
-                            formattedInfo += "**__" + friendRateup.friendName + "__**\n\n";
-                            
-                            foreach(var itemsByArea in friendRateup.itemsByArea)
-                            {
-                                if (itemsByArea.Value[0].Equals(""))
-                                {
-                                    continue;
-                                }
-                                formattedInfo += "  " + "**" + itemsByArea.Key + "**\n"
-                                    + "```" +string.Join(", ", itemsByArea.Value) + "```";
-                            }
-                            formattedInfo += "\n";
-                        }
-                        if (formattedInfo.Equals(""))
-                        {
-                            formattedInfo = "No rateups found for the searched terms!";
-                        }
-
-                        if(formattedInfo.Length > 2000)
-                        {
-                            formattedInfo = "Result string too big!";
-                        }
-                        await msg.ModifyAsync(m => m.Content = GetText("simple", formattedInfo)).ConfigureAwait(false);
+                        await msg.ModifyAsync(m => m.Content = GetText("simple", discordString)).ConfigureAwait(false);
                     }
-                    catch (System.Net.Http.HttpRequestException)
+                    catch (HttpRequestException)
                     {
                         await msg.ModifyAsync(m => m.Content = GetText("kf_rateup_commmunication_error")).ConfigureAwait(false);
                         return;
