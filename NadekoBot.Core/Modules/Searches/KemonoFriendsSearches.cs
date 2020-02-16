@@ -285,9 +285,9 @@ namespace NadekoBot.Modules.Searches
                     await ReplyErrorLocalized("kf_rateup_query_empty").ConfigureAwait(false);
                     return;
                 }
-                else if (query.Length > 1024)
+                else if (query.Length > 128)
                 {
-                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false);
+                    await ReplyErrorLocalized("kf_rateup_query_too_long").ConfigureAwait(false);
                     return;
                 }
 
