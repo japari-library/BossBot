@@ -3474,9 +3474,18 @@
     "usage": [
       "{0}wip",
       "{0}wip -p",
-      "{0}wip -n -p",
+      "{0}wip -n",
       "{0}wip -i",
       "{0}wip -a"
+    ]
+  },
+  "rateup": {
+    "cmd": "rateup",
+    "desc": "Get the rateups for Pavilion friends, optionally filtered by area. Partial names will return all relevant matches. NOTE: Maximum number of returned Friends is 2.",
+    "usage": [
+      "{0}rateup serval",
+      "{0}rateup serval in savanna",
+      "{0}rateup asian small-clawed otter in savanna g2"
     ]
   }
 }

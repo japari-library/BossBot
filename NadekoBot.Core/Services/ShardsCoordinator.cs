@@ -281,7 +281,8 @@ namespace NadekoBot.Core.Services
                 await tsc.Task.ConfigureAwait(false);
                 while (true)
                 {
-                    await Task.Delay(15000).ConfigureAwait(false);
+                    // Changed in case the cloud platform is especially slow at existing
+                    await Task.Delay(60000).ConfigureAwait(false);
                     try
                     {
                         var db = _redis.GetDatabase();

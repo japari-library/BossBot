@@ -6,10 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NadekoBot.Common.Attributes;
-using NadekoBot.Core.Common.Pokemon;
-using NadekoBot.Core.Services;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using System;
 using NadekoBot.Core.Modules.Searches.Common;
@@ -17,18 +14,16 @@ using System.Text.RegularExpressions;
 using NadekoBot.Core.Common; //for OptionParser
 using Configuration = AngleSharp.Configuration; //for parsing html page
 using AngleSharp;
-using AngleSharp.Dom;
 using AngleSharp.Dom.Html;
-using AngleSharp.Parser.Html;
 
 namespace NadekoBot.Modules.Searches
 {
     public partial class Searches
     {
-        public class JapariLibrarySearchCommand : NadekoSubmodule<SearchesService>
+        public class KemonoFriendsSearchCommand : NadekoSubmodule<SearchesService>
         {
             private readonly IHttpClientFactory _httpFactory;
-            public JapariLibrarySearchCommand(IHttpClientFactory factory)
+            public KemonoFriendsSearchCommand(IHttpClientFactory factory)
             {
                 _httpFactory = factory;
             }
@@ -38,12 +33,17 @@ namespace NadekoBot.Modules.Searches
             {
                 query = query?.Trim();
 
-                // reply to the user if the query is empty
+                // reply to the user if the query is empty or over 1024 characters
                 if (string.IsNullOrWhiteSpace(query))
                 {
-                    await ReplyErrorLocalized("jl_wikisearch_query_empty").ConfigureAwait(false); return;
+                    await ReplyErrorLocalized("kf_wikisearch_query_empty").ConfigureAwait(false); return;
                 }
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_wikisearch_searching")).ConfigureAwait(false);
+                else if (query.Length > 1024)
+                {
+                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
+                }
+
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
                 // search with the query
                 using (var http = _httpFactory.CreateClient())
                 {
@@ -56,7 +56,7 @@ namespace NadekoBot.Modules.Searches
                         // reply to the user if their query cannot be found
                         if (data.query == null)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_article_not_found")).ConfigureAwait(false);
                             return;
                         }
                         var queryPage = data.query.pages[0];
@@ -66,13 +66,13 @@ namespace NadekoBot.Modules.Searches
                         var parseData = JsonConvert.DeserializeObject<JapariLibraryParseAPIModel>(parseJson);
                         if (parseData.parse == null)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_article_not_found")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_article_not_found")).ConfigureAwait(false);
                             return;
                         }
                         var parsePage = parseData.parse;
                         var imageUrl = "";
                         // get image because mediawiki doesn't want to expose image URL
-                        
+
                         var config = Configuration.Default.WithDefaultLoader();
 
                         using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
@@ -87,6 +87,8 @@ namespace NadekoBot.Modules.Searches
                         var footer = new EmbedFooterBuilder();
                         footer.Text = "Japari Library";
                         footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+                        // truncated version of the query (max 50 characters + ellipsis) to be shown back
+                        string truncatedQuery = query.Length <= 50 ? query : query.Substring(0, 50) + "...";
                         // send with embed 
                         await Context.Channel.EmbedAsync(new EmbedBuilder()
                         .WithFooter(footer)
@@ -95,7 +97,7 @@ namespace NadekoBot.Modules.Searches
                         .WithDescription(parsePage.properties.description)
                         .WithThumbnailUrl(imageUrl)
                         .WithUrl(queryPage.fullurl)
-                        .AddField("Search Term", query, inline: true)
+                        .AddField("Search Term", truncatedQuery, inline: true)
                         .AddField("Revision", queryPage.revisions[0].timestamp, inline: true)
                         .AddField("Revision By", queryPage.revisions[0].user, inline: true)
                         .AddField("Revision ID", queryPage.revisions[0].revid, inline: true)
@@ -103,7 +105,7 @@ namespace NadekoBot.Modules.Searches
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
-                        await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                        await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_error")).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -115,7 +117,7 @@ namespace NadekoBot.Modules.Searches
             {
                 var (opts, _) = OptionsParser.ParseFrom(new FriendSearchOptions(), args); //parse options, to be used to check if the result should be unembedded
 
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_randomfriend_searching")).ConfigureAwait(false);
                 string friendPage; //we need to declare this here to use it out of the do-while loop
                 using (var http = _httpFactory.CreateClient())
                 {
@@ -129,7 +131,7 @@ namespace NadekoBot.Modules.Searches
                         }
                         catch (System.Net.Http.HttpRequestException)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_error")).ConfigureAwait(false);
                             return;
                         }
                         friendPage = Regex.Replace(friendPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
@@ -139,7 +141,7 @@ namespace NadekoBot.Modules.Searches
                     if (opts.IsUnembedded)
                     {
                         friendPage = "<" + friendPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
-                        await msg.ModifyAsync(m => m.Content = GetText("jl_randomfriend_success", friendPage)).ConfigureAwait(false);
+                        await msg.ModifyAsync(m => m.Content = GetText("kf_randomfriend_success", friendPage)).ConfigureAwait(false);
                     }
                     else //make it embedded
                     {
@@ -185,18 +187,21 @@ namespace NadekoBot.Modules.Searches
             {
                 var (opts, _) = OptionsParser.ParseFrom(new RandomWIPOptions(), args); //parse options, to be used to check if the result should be unembedded
 
-                var msg = await Context.Channel.SendMessageAsync(GetText("jl_randomfriend_searching")).ConfigureAwait(false);
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_randomfriend_searching")).ConfigureAwait(false);
                 string wipPage; //we need to declare this here to use it out of the do-while loop
 
                 string redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Missing_Content"; //by default look in the Missing_Content category
                 //if requested, look for a specific kind of WIP page (unfortunately only 1 of these is possible at a time)
-                if (opts.isIrl) {
+                if (opts.isIrl)
+                {
                     redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_RL_Info";
                 }
-                if (opts.isAppearance) {
+                if (opts.isAppearance)
+                {
                     redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Needs_Appearance";
                 }
-                if (opts.isPriority) {
+                if (opts.isPriority)
+                {
                     redirPage = "https://japari-library.com/wiki/Special:RandomInCategory/Priority_Articles";
                 }
 
@@ -212,7 +217,7 @@ namespace NadekoBot.Modules.Searches
                         }
                         catch (System.Net.Http.HttpRequestException)
                         {
-                            await msg.ModifyAsync(m => m.Content = GetText("jl_wikisearch_error")).ConfigureAwait(false);
+                            await msg.ModifyAsync(m => m.Content = GetText("kf_wikisearch_error")).ConfigureAwait(false);
                             return;
                         }
                         wipPage = Regex.Replace(wipPage, "http*", "https"); //the URI is http by default while japari-librari is https, the vanilla link works but this is more correct
@@ -223,9 +228,10 @@ namespace NadekoBot.Modules.Searches
                     {
                         wipPage = "<" + wipPage + ">"; //Enclosing a link in these tells Discord not to make an embed for it
 
-                        string successText = "jl_randomwip_success";
-                        if (opts.isPriority) {
-                            successText = "jl_randomwip_priority_success";
+                        string successText = "kf_randomwip_success";
+                        if (opts.isPriority)
+                        {
+                            successText = "kf_randomwip_priority_success";
                         }
                         await msg.ModifyAsync(m => m.Content = GetText(successText, wipPage)).ConfigureAwait(false);
                     }
@@ -242,8 +248,8 @@ namespace NadekoBot.Modules.Searches
 
                             var friendInfoElem = document.QuerySelector("#mw-content-text > p");
                             // check if we can get the description or not, if not, just say the description is unavailable
-                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml; 
-                            
+                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml;
+
                             var friendNameElem = document.QuerySelector("#firstHeading");
                             var friendName = friendNameElem.InnerHtml; //get page name
 
@@ -264,6 +270,51 @@ namespace NadekoBot.Modules.Searches
                             .WithFooter(footer)
                             ).ConfigureAwait(false);
                         }
+                    }
+                }
+            }
+
+            [NadekoCommand, Usage, Description, Aliases]
+            public async Task RateUp([Remainder] string query = null)
+            {
+                query = query?.Trim();
+
+                // reply to the user if the query is empty or over 1024 characters
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    await ReplyErrorLocalized("kf_rateup_query_empty").ConfigureAwait(false);
+                    return;
+                }
+                else if (query.Length > 128)
+                {
+                    await ReplyErrorLocalized("kf_rateup_query_too_long").ConfigureAwait(false);
+                    return;
+                }
+
+                // find friend and area name (if given) from query
+                IList<string> arguments = query.Split(" in ").Select(arg => Uri.EscapeDataString(arg)).ToList();
+                string friendName = arguments[0];
+                string areaName = arguments.Count > 1 ? arguments[1] : null;
+
+                var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
+
+                using (var http = _httpFactory.CreateClient())
+                {
+                    try
+                    {
+                        string partialQuery = areaName != null ? "friend={0}&area={1}" : "friend={0}";
+                        string queryApiUrl = "http://www.smidgeindustriesltd.com/kf/dropdata/botdata.php?" + partialQuery;
+                        // String.Format will ignore the areaName if it isn't needed
+                        string queryResponse = await http.GetStringAsync(string.Format(queryApiUrl, friendName, areaName)).ConfigureAwait(false);
+
+                        string discordString = RateupQueryResult.ConvertToModel(queryResponse).GetDiscordString();
+
+                        await msg.ModifyAsync(m => m.Content = GetText("simple", discordString)).ConfigureAwait(false);
+                    }
+                    catch (HttpRequestException)
+                    {
+                        await msg.ModifyAsync(m => m.Content = GetText("kf_rateup_commmunication_error")).ConfigureAwait(false);
+                        return;
                     }
                 }
             }
