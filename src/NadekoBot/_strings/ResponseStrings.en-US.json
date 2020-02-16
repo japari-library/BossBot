@@ -999,7 +999,7 @@
   "searches_kf_randomwip_success": "🛠️ Random WIP Article Found!\n{0}",
   "searches_kf_randomwip_priority_success": "🛠️ Random Priority Article Found!\n{0}",
   "searches_kf_rateup_query_empty": "Your query is empty. Type `.h .rateup` to see the command's usage.",
-  "searches_kf_rateup_query_too_long": "Your query is too ＬＯＮＧ (more than 128 characters)!",
+  "searches_kf_rateup_query_too_long": "Your query is too ＬＯＮＧ (more than 64 characters)!",
   "searches_kf_rateup_commmunication_error": "⚠ Failed to contact server containing rateup information.",
   "searches_simple": "{0}"
 }
