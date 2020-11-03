@@ -46,6 +46,8 @@ namespace NadekoBot.Core.Services.Impl
         public string BotListToken { get; }
         public string RedisOptions { get; }
 
+        public string KFTriviaBaseURL { get; }
+
         public BotCredentials()
         {
             _log = LogManager.GetCurrentClassLogger();
@@ -139,6 +141,8 @@ namespace NadekoBot.Core.Services.Impl
                 {
                     TwitchClientId = "67w6z9i09xv2uoojdm9l0wsyph4hxo6";
                 }
+
+                KFTriviaBaseURL = data[nameof(KFTriviaBaseURL)];
             }
             catch (Exception ex)
             {

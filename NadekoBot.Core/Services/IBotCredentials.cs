@@ -32,6 +32,8 @@ namespace NadekoBot.Core.Services
         string BotListToken { get; }
         string TwitchClientId { get; }
         string RedisOptions { get; }
+
+        string KFTriviaBaseURL { get; }
     }
 
     public class RestartConfig

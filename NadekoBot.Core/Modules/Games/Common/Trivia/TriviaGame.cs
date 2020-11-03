@@ -45,11 +45,11 @@ namespace NadekoBot.Modules.Games.Common.Trivia
 
         public TriviaGame(NadekoStrings strings, DiscordSocketClient client, IBotConfigProvider bc,
             IDataCache cache, ICurrencyService cs, IGuild guild, ITextChannel channel,
-            TriviaOptions options)
+            TriviaOptions options, IBotCredentials creds)
         {
             _log = LogManager.GetCurrentClassLogger();
             _cache = cache;
-            _questionPool = new TriviaQuestionPool(_cache);
+            _questionPool = new TriviaQuestionPool(_cache, creds);
             _strings = strings;
             _client = client;
             _bc = bc;

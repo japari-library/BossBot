@@ -27,7 +27,7 @@ namespace NadekoBot.Core.Services.Impl
 		
 		//ZGD: URL for FriendPages.json for trivia-friends
 		
-		private const string friendListUrl = "http://178.128.31.42/friends/FriendPages.json";
+		private string FriendListUrl => $"{_creds.KFTriviaBaseURL}/FriendPages.json";
 
         public IReadOnlyDictionary<string, SearchPokemon> Pokemons
         {
@@ -127,7 +127,7 @@ namespace NadekoBot.Core.Services.Impl
 					//to mimic what's being used in the Pokemon trivia.
 					WebClient wc = new WebClient();					
 					int friendCounter = 0;					
-                    FriendMap = JsonConvert.DeserializeObject<FriendsNameId[]>(wc.DownloadString(friendListUrl))
+                    FriendMap = JsonConvert.DeserializeObject<FriendsNameId[]>(wc.DownloadString(FriendListUrl))
                             .ToDictionary(x => friendCounter++, x => x);
 					//ZGD: end of Friend list code
                 }

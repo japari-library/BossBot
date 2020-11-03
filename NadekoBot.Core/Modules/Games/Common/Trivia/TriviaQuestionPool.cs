@@ -9,6 +9,8 @@ namespace NadekoBot.Modules.Games.Common.Trivia
     public class TriviaQuestionPool
     {
         private readonly IDataCache _cache;
+        private readonly IBotCredentials _creds;
+
         private readonly int maxPokemonId;
 		//ZGD: variable used for Friend list count
 		private readonly int maxFriendId;
@@ -22,9 +24,11 @@ namespace NadekoBot.Modules.Games.Common.Trivia
 		private IReadOnlyDictionary<int, FriendsNameId> Map2 => _cache.LocalData.FriendMap;		
 		private FriendsNameId currentFriend;
 
-        public TriviaQuestionPool(IDataCache cache)
+        public TriviaQuestionPool(IDataCache cache, IBotCredentials creds)
         {
             _cache = cache;
+            _creds = creds;
+
             maxPokemonId = 721; //xd
 			
 			//ZGD: Initialize Friend List
@@ -67,15 +71,15 @@ namespace NadekoBot.Modules.Games.Common.Trivia
 					return new TriviaQuestion("Who's That Friend?!", 
 						friendName.ToTitleCase(),
 						"Friends Hard",
-						$@"http://178.128.31.42/friends/SR/{friendTriviaid}.png",
-						$@"http://178.128.31.42/friends/RR/{friendTriviaid}.png");
+						$@"{_creds.KFTriviaBaseURL}/SR/{friendTriviaid}.png",
+						$@"{_creds.KFTriviaBaseURL}/RR/{friendTriviaid}.png");
 				}
 				else
 				{
 					return new TriviaQuestion("Name That Friend!", 
 						friendName.ToTitleCase(),
 						"Friends",
-						$@"http://178.128.31.42/friends/RR/{friendTriviaid}.png",
+						$@"{_creds.KFTriviaBaseURL}/RR/{friendTriviaid}.png",
 						$@"");
 				}
 			}

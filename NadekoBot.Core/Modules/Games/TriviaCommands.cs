@@ -20,12 +20,14 @@ namespace NadekoBot.Modules.Games
             private readonly IDataCache _cache;
             private readonly ICurrencyService _cs;
             private readonly DiscordSocketClient _client;
+            private readonly IBotCredentials _creds;
 
-            public TriviaCommands(DiscordSocketClient client, IDataCache cache, ICurrencyService cs)
+            public TriviaCommands(DiscordSocketClient client, IDataCache cache, ICurrencyService cs, IBotCredentials creds)
             {
                 _cache = cache;
                 _cs = cs;
                 _client = client;
+                _creds = creds;
             }
 
             [NadekoCommand, Usage, Description, Aliases]
@@ -45,7 +47,7 @@ namespace NadekoBot.Modules.Games
                 {
                     return;
                 }
-                var trivia = new TriviaGame(Strings, _client, Bc, _cache, _cs, channel.Guild, channel, opts);
+                var trivia = new TriviaGame(Strings, _client, Bc, _cache, _cs, channel.Guild, channel, opts, _creds);
                 if (_service.RunningTrivias.TryAdd(channel.Guild.Id, trivia))
                 {
                     try
