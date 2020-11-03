@@ -3481,11 +3481,12 @@
   },
   "rateup": {
     "cmd": "rateup",
-    "desc": "Get the rateups for Pavilion friends, optionally filtered by area. Partial names will return all relevant matches. NOTE: Maximum number of returned Friends is 2.",
+    "desc": "Get the rateups for Pavilion friends, optionally filtered by area. Partial names will, by default, return all relevant matches. To only get exact Friend matches, please enclose the Friend name in quotes. NOTE: Maximum number of returned Friends is 2.",
     "usage": [
       "{0}rateup serval",
       "{0}rateup serval in savanna",
-      "{0}rateup asian small-clawed otter in savanna g2"
+      "{0}rateup asian small-clawed otter in savanna g2",
+      "{0}rateup \"california sea lion\" in savanna"
     ]
   }
 }
