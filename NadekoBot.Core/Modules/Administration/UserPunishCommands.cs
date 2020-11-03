@@ -39,7 +39,6 @@ namespace NadekoBot.Modules.Administration
                 {
                     await (await user.GetOrCreateDMChannelAsync().ConfigureAwait(false)).EmbedAsync(new EmbedBuilder().WithErrorColor()
                                      .WithDescription(GetText("warned_on", Context.Guild.ToString()))
-                                     .AddField(efb => efb.WithName(GetText("moderator")).WithValue(Context.User.ToString()))
                                      .AddField(efb => efb.WithName(GetText("reason")).WithValue(reason ?? "-")))
                         .ConfigureAwait(false);
                 }
@@ -125,7 +124,7 @@ namespace NadekoBot.Modules.Administration
                     foreach (var w in warnings)
                     {
                         i++;
-                        var name = GetText("warned_on_by", w.DateAdded.Value.ToString("dd.MM.yyy"), w.DateAdded.Value.ToString("HH:mm"), w.Moderator);
+                        var name = GetText("warned_on_at", w.DateAdded.Value.ToString("dd.MM.yyy"), w.DateAdded.Value.ToString("HH:mm"));
                         if (w.Forgiven)
                             name = Format.Strikethrough(name) + " " + GetText("warn_cleared_by", w.ForgivenBy);
 
