@@ -15,6 +15,9 @@ using NadekoBot.Core.Common; //for OptionParser
 using Configuration = AngleSharp.Configuration; //for parsing html page
 using AngleSharp;
 using AngleSharp.Dom.Html;
+using NadekoBot.Core.Services;
+using NadekoBot.Core.Common.Pokemon;
+using System.Net;
 
 namespace NadekoBot.Modules.Searches
 {
@@ -23,10 +26,16 @@ namespace NadekoBot.Modules.Searches
         public class KemonoFriendsSearchCommand : NadekoSubmodule<SearchesService>
         {
             private readonly IHttpClientFactory _httpFactory;
-            public KemonoFriendsSearchCommand(IHttpClientFactory factory)
+            private readonly IDataCache _cache;
+            private readonly IBotCredentials _creds;
+            public KemonoFriendsSearchCommand(IHttpClientFactory factory, IDataCache cache, IBotCredentials creds)
             {
                 _httpFactory = factory;
+                _cache = cache;
+                _creds = creds;
             }
+
+            private IReadOnlyDictionary<int, FriendsNameId> friendImageDbMap => _cache.LocalData.FriendMap;
 
             [NadekoCommand, Usage, Description, Aliases]
             public async Task JapariWiki([Remainder] string query = null)
@@ -70,16 +79,28 @@ namespace NadekoBot.Modules.Searches
                             return;
                         }
                         var parsePage = parseData.parse;
-                        var imageUrl = "";
+                        string imageUrl = string.Empty;
+                        string friendName = string.Empty;
                         // get image because mediawiki doesn't want to expose image URL
 
                         var config = Configuration.Default.WithDefaultLoader();
 
                         using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
                         {
-                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
-                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a friend page has multiple Friend pictures, this will get the corrct image
-                            imageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
+                            imageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement).InnerText;
+                        }
+
+                        // ! Possible bug in the old version of .NET Core used to build Boss.
+                        // A couple of image Urls are not recognised as valid Uris.
+                        // We can hack these few cases in by matching the friend name (found in the webpage) with the trivia image database.
+                        // Ideally, we want to upgrade the bot to use a higher version of Net Core so this hack isn't needed.
+                        if (!Uri.IsWellFormedUriString(imageUrl, UriKind.RelativeOrAbsolute))
+                        {
+                            string friendId = friendImageDbMap.Values.FirstOrDefault(x => x.Name == friendName)?.Triviaid;
+                            imageUrl = !string.IsNullOrEmpty(friendId)
+                                ? $@"{_creds.KFTriviaBaseURL}/RR/{friendId}.png"
+                                : "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
                         }
 
                         await msg.DeleteAsync().ConfigureAwait(false);
@@ -89,19 +110,32 @@ namespace NadekoBot.Modules.Searches
                         footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
                         // truncated version of the query (max 50 characters + ellipsis) to be shown back
                         string truncatedQuery = query.Length <= 50 ? query : query.Substring(0, 50) + "...";
-                        // send with embed 
-                        await Context.Channel.EmbedAsync(new EmbedBuilder()
+                        // send with embed
+                        EmbedBuilder embedBuilder = new EmbedBuilder()
                         .WithFooter(footer)
                         .WithColor(new Discord.Color(52, 152, 219))
                         .WithTitle(parsePage.title)
-                        .WithDescription(parsePage.properties.description)
                         .WithThumbnailUrl(imageUrl)
-                        .WithUrl(queryPage.fullurl)
                         .AddField("Search Term", truncatedQuery, inline: true)
                         .AddField("Revision", queryPage.revisions[0].timestamp, inline: true)
                         .AddField("Revision By", queryPage.revisions[0].user, inline: true)
-                        .AddField("Revision ID", queryPage.revisions[0].revid, inline: true)
-                        );
+                        .AddField("Revision ID", queryPage.revisions[0].revid, inline: true);
+
+                        // Same error as for the image Url, where the Url is not recognised as valid.
+                        // Best we can do for now is displaying the Url separately.
+                        if (Uri.IsWellFormedUriString(queryPage.fullurl, UriKind.RelativeOrAbsolute))
+                        {
+                            embedBuilder
+                                .WithUrl(queryPage.fullurl)
+                                .WithDescription(WebUtility.HtmlDecode(parsePage.properties.description));
+                        }
+                        else
+                        {
+                            // xd
+                            embedBuilder.WithDescription(queryPage.fullurl + Environment.NewLine + WebUtility.HtmlDecode(parsePage.properties.description));
+                        }
+
+                        await Context.Channel.EmbedAsync(embedBuilder);
                     }
                     catch (System.Net.Http.HttpRequestException)
                     {
@@ -148,35 +182,58 @@ namespace NadekoBot.Modules.Searches
 
                         var config = Configuration.Default.WithDefaultLoader();
 
+                        string friendImageUrl;
+                        string friendName;
+                        string friendInfo;
+
                         using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false))
                         {
-                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
-                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a friend page has multiple Friend pictures, this will get the corrct image
-                            var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get friend image or a default one if one cannot be loaded
-
-                            var friendInfoElem = document.QuerySelector("#mw-content-text > p");
-                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml;
-
-                            var friendNameElem = document.QuerySelector("#firstHeading");
-                            var friendName = friendNameElem.InnerHtml; //get friend name
-
-                            friendName = Regex.Replace(friendName, "<[^>]*>", "");
-                            friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
-
-                            // footer 
-                            var footer = new EmbedFooterBuilder();
-                            footer.Text = "Japari Library";
-                            footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
-
-                            await msg.DeleteAsync();
-                            await Context.Channel.EmbedAsync(new EmbedBuilder().WithOkColor() //make a small embed
-                            .WithTitle(friendName)
-                            .WithDescription(friendInfo)
-                            .WithThumbnailUrl(friendImageUrl)
-                            .WithUrl(friendPage)
-                            .WithFooter(footer)
-                            ).ConfigureAwait(false);
+                            friendImageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.InnerText ?? "Name Unavailable";
+                            friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.InnerHtml ?? "Description Unavailable";
                         }
+
+                        // ! Possible bug in the old version of .NET Core used to build Boss.
+                        // A couple of image Urls are not recognised as valid Uris.
+                        // We can hack these few cases in by matching the friend name (found in the webpage) with the trivia image database.
+                        // Ideally, we want to upgrade the bot to use a higher version of Net Core so this hack isn't needed.
+                        if (friendImageUrl == null || !Uri.IsWellFormedUriString(friendImageUrl, UriKind.RelativeOrAbsolute))
+                        {
+                            string friendId = friendImageDbMap.Values.FirstOrDefault(x => x.Name == friendName)?.Triviaid;
+                            friendImageUrl = !string.IsNullOrEmpty(friendId)
+                                ? $@"{_creds.KFTriviaBaseURL}/RR/{friendId}.png"
+                                : "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+                        }
+                        friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
+
+                        // footer 
+                        EmbedFooterBuilder footer = new EmbedFooterBuilder()
+                                .WithText("Japari Library")
+                                .WithIconUrl("https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab");
+
+                        await msg.DeleteAsync();
+
+                        EmbedBuilder embedBuilder = new EmbedBuilder()
+                            .WithFooter(footer)
+                            .WithColor(new Discord.Color(52, 152, 219))
+                            .WithTitle(friendName)
+                            .WithThumbnailUrl(friendImageUrl);
+
+                        // Same error as for the image Url, where the Url is not recognised as valid.
+                        // Best we can do for now is displaying the Url separately.
+                        if (Uri.IsWellFormedUriString(friendPage, UriKind.RelativeOrAbsolute))
+                        {
+                            embedBuilder
+                                .WithUrl(friendPage)
+                                .WithDescription(WebUtility.HtmlDecode(friendInfo));
+                        }
+                        else
+                        {
+                            // xd
+                            embedBuilder.WithDescription(friendPage + Environment.NewLine + WebUtility.HtmlDecode(friendInfo));
+                        }
+
+                        await Context.Channel.EmbedAsync(embedBuilder).ConfigureAwait(false);
                     }
                 }
             }
@@ -237,39 +294,60 @@ namespace NadekoBot.Modules.Searches
                     }
                     else //make it embedded
                     {
-
                         var config = Configuration.Default.WithDefaultLoader();
+
+                        string friendImageUrl;
+                        string friendName;
+                        string friendInfo;
 
                         using (var document = await BrowsingContext.New(config).OpenAsync(wipPage).ConfigureAwait(false))
                         {
-                            var imageElem = document.QuerySelector("table.infobox > tbody > tr >td > p > a.image > img");
-                            imageElem = ((IHtmlImageElement)imageElem)?.Source == null ? document.QuerySelector("div.tabbertab > p > a > img") : imageElem; //if a wip page has multiple pictures, this will get the correct image
-                            var friendImageUrl = ((IHtmlImageElement)imageElem)?.Source ?? "http://icecream.me/uploads/870b03f36b59cc16ebfe314ef2dde781.png"; //get wip image or a default one if one cannot be loaded
-
-                            var friendInfoElem = document.QuerySelector("#mw-content-text > p");
-                            // check if we can get the description or not, if not, just say the description is unavailable
-                            var friendInfo = friendInfoElem == null ? "Description unavailable" : friendInfoElem.InnerHtml;
-
-                            var friendNameElem = document.QuerySelector("#firstHeading");
-                            var friendName = friendNameElem.InnerHtml; //get page name
-
-                            friendName = Regex.Replace(friendName, "<[^>]*>", "");
-                            friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
-
-                            // footer 
-                            var footer = new EmbedFooterBuilder();
-                            footer.Text = "Japari Library";
-                            footer.IconUrl = "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
-
-                            await msg.DeleteAsync();
-                            await Context.Channel.EmbedAsync(new EmbedBuilder().WithOkColor() //make a small embed
-                            .WithTitle(friendName)
-                            .WithDescription(friendInfo)
-                            .WithThumbnailUrl(friendImageUrl)
-                            .WithUrl(wipPage)
-                            .WithFooter(footer)
-                            ).ConfigureAwait(false);
+                            friendImageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.InnerText ?? "Name Unavailable";
+                            friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.InnerHtml ?? "Description Unavailable";
                         }
+
+                        // ! Possible bug in the old version of .NET Core used to build Boss.
+                        // A couple of image Urls are not recognised as valid Uris.
+                        // We can hack these few cases in by matching the friend name (found in the webpage) with the trivia image database.
+                        // Ideally, we want to upgrade the bot to use a higher version of Net Core so this hack isn't needed.
+                        if (friendImageUrl == null || !Uri.IsWellFormedUriString(friendImageUrl, UriKind.RelativeOrAbsolute))
+                        {
+                            string friendId = friendImageDbMap.Values.FirstOrDefault(x => x.Name == friendName)?.Triviaid;
+                            friendImageUrl = !string.IsNullOrEmpty(friendId)
+                                ? $@"{_creds.KFTriviaBaseURL}/RR/{friendId}.png"
+                                : "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
+                        }
+                        friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
+
+                        // footer 
+                        EmbedFooterBuilder footer = new EmbedFooterBuilder()
+                                .WithText("Japari Library")
+                                .WithIconUrl("https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab");
+
+                        await msg.DeleteAsync();
+
+                        EmbedBuilder embedBuilder = new EmbedBuilder()
+                            .WithFooter(footer)
+                            .WithColor(new Discord.Color(52, 152, 219))
+                            .WithTitle(friendName)
+                            .WithThumbnailUrl(friendImageUrl);
+
+                        // Same error as for the image Url, where the Url is not recognised as valid.
+                        // Best we can do for now is displaying the Url separately.
+                        if (Uri.IsWellFormedUriString(wipPage, UriKind.RelativeOrAbsolute))
+                        {
+                            embedBuilder
+                                .WithUrl(wipPage)
+                                .WithDescription(WebUtility.HtmlDecode(friendInfo));
+                        }
+                        else
+                        {
+                            // xd
+                            embedBuilder.WithDescription(wipPage + Environment.NewLine + WebUtility.HtmlDecode(friendInfo));
+                        }
+
+                        await Context.Channel.EmbedAsync(embedBuilder).ConfigureAwait(false);
                     }
                 }
             }
