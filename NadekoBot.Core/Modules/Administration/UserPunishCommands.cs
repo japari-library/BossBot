@@ -124,7 +124,7 @@ namespace NadekoBot.Modules.Administration
                     foreach (var w in warnings)
                     {
                         i++;
-                        var name = GetText("warned_on_at", w.DateAdded.Value.ToString("dd.MM.yyy"), w.DateAdded.Value.ToString("HH:mm"));
+                        var name = GetText("warned_on_at_by_Park_Guides", w.DateAdded.Value.ToString("dd.MM.yyy"), w.DateAdded.Value.ToString("HH:mm"));
                         if (w.Forgiven)
                             name = Format.Strikethrough(name) + " " + GetText("warn_cleared_by", w.ForgivenBy);
 
