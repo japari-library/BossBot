@@ -10,6 +10,7 @@ using NadekoBot.Extensions;
 using NadekoBot.Core.Services;
 using NLog;
 using Microsoft.EntityFrameworkCore;
+using NadekoBot.Core.Services.Database.Models;
 
 namespace NadekoBot.Modules.Permissions.Services
 {
@@ -27,6 +28,9 @@ namespace NadekoBot.Modules.Permissions.Services
         public ConcurrentHashSet<ulong> WordFilteringChannels { get; }
         public ConcurrentHashSet<ulong> WordFilteringServers { get; }
 
+        public ConcurrentHashSet<ulong> LinkFilteringChannels { get; }
+        public ConcurrentHashSet<ulong> LinkFilteringServers { get; }
+
         public int Priority => -50;
         public ModuleBehaviorType BehaviorType => ModuleBehaviorType.Blocker;
 
@@ -40,7 +44,7 @@ namespace NadekoBot.Modules.Permissions.Services
 
         public void ClearFilteredWords(ulong guildId)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var gc = uow.GuildConfigs.ForId(guildId,
                     set => set.Include(x => x.FilteredWords)
@@ -58,7 +62,7 @@ namespace NadekoBot.Modules.Permissions.Services
                 gc.FilteredWords.Clear();
                 gc.FilterWordsChannelIds.Clear();
 
-                uow.Complete();
+                uow.SaveChanges();
             }
         }
 
@@ -70,25 +74,39 @@ namespace NadekoBot.Modules.Permissions.Services
             return words;
         }
 
-        public FilterService(DiscordSocketClient _client, NadekoBot bot, DbService db)
+        public FilterService(DiscordSocketClient client, NadekoBot bot, DbService db)
         {
             _log = LogManager.GetCurrentClassLogger();
             _db = db;
 
-            InviteFilteringServers = new ConcurrentHashSet<ulong>(bot.AllGuildConfigs.Where(gc => gc.FilterInvites).Select(gc => gc.GuildId));
-            InviteFilteringChannels = new ConcurrentHashSet<ulong>(bot.AllGuildConfigs.SelectMany(gc => gc.FilterInvitesChannelIds.Select(fci => fci.ChannelId)));
+            using(var uow = db.GetDbContext())
+            {
+                var ids = client.GetGuildIds();
+                var configs = uow._context.Set<GuildConfig>()
+                    .AsQueryable()
+                    .Include(x => x.FilteredWords)
+                    .Include(x => x.FilterLinksChannelIds)
+                    .Include(x => x.FilterWordsChannelIds)
+                    .Include(x => x.FilterInvitesChannelIds)
+                    .Where(gc => ids.Contains(gc.GuildId))
+                    .ToList();
+                    
+                InviteFilteringServers = new ConcurrentHashSet<ulong>(configs.Where(gc => gc.FilterInvites).Select(gc => gc.GuildId));
+                InviteFilteringChannels = new ConcurrentHashSet<ulong>(configs.SelectMany(gc => gc.FilterInvitesChannelIds.Select(fci => fci.ChannelId)));
 
-            var dict = bot.AllGuildConfigs.ToDictionary(gc => gc.GuildId, gc => new ConcurrentHashSet<string>(gc.FilteredWords.Select(fw => fw.Word)));
+                LinkFilteringServers = new ConcurrentHashSet<ulong>(configs.Where(gc => gc.FilterLinks).Select(gc => gc.GuildId));
+                LinkFilteringChannels = new ConcurrentHashSet<ulong>(configs.SelectMany(gc => gc.FilterLinksChannelIds.Select(fci => fci.ChannelId)));
 
-            ServerFilteredWords = new ConcurrentDictionary<ulong, ConcurrentHashSet<string>>(dict);
+                var dict = configs.ToDictionary(gc => gc.GuildId, gc => new ConcurrentHashSet<string>(gc.FilteredWords.Select(fw => fw.Word)));
 
-            var serverFiltering = bot.AllGuildConfigs.Where(gc => gc.FilterWords);
-            WordFilteringServers = new ConcurrentHashSet<ulong>(serverFiltering.Select(gc => gc.GuildId));
-            WordFilteringChannels = new ConcurrentHashSet<ulong>(bot.AllGuildConfigs.SelectMany(gc => gc.FilterWordsChannelIds.Select(fwci => fwci.ChannelId)));
+                ServerFilteredWords = new ConcurrentDictionary<ulong, ConcurrentHashSet<string>>(dict);
 
-            //LinkFilteringServers = new ConcurrentHashSet<ulong>(bot.AllGuildConfigs.Where(gc => gc.FilterLinks).Select(x => x.GuildId));
+                var serverFiltering = configs.Where(gc => gc.FilterWords);
+                WordFilteringServers = new ConcurrentHashSet<ulong>(serverFiltering.Select(gc => gc.GuildId));
+                WordFilteringChannels = new ConcurrentHashSet<ulong>(configs.SelectMany(gc => gc.FilterWordsChannelIds.Select(fwci => fwci.ChannelId)));
+            }
 
-            _client.MessageUpdated += (oldData, newMsg, channel) =>
+            client.MessageUpdated += (oldData, newMsg, channel) =>
             {
                 var _ = Task.Run(() =>
                 {
@@ -107,7 +125,10 @@ namespace NadekoBot.Modules.Permissions.Services
         public async Task<bool> RunBehavior(DiscordSocketClient _, IGuild guild, IUserMessage msg)
             => !(msg.Author is IGuildUser gu) //it's never filtered outside of guilds, and never block administrators
                 ? false
-                : !gu.GuildPermissions.Administrator && (await FilterInvites(guild, msg).ConfigureAwait(false) || await FilterWords(guild, msg).ConfigureAwait(false));
+                : !gu.GuildPermissions.Administrator &&
+                    (await FilterInvites(guild, msg).ConfigureAwait(false)
+                    || await FilterWords(guild, msg).ConfigureAwait(false)
+                    || await FilterLinks(guild, msg).ConfigureAwait(false));
 
         public async Task<bool> FilterWords(IGuild guild, IUserMessage usrMsg)
         {
@@ -160,6 +181,31 @@ namespace NadekoBot.Modules.Permissions.Services
                 catch (HttpException ex)
                 {
                     _log.Warn("I do not have permission to filter invites in channel with id " + usrMsg.Channel.Id, ex);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public async Task<bool> FilterLinks(IGuild guild, IUserMessage usrMsg)
+        {
+            if (guild is null)
+                return false;
+            if (usrMsg is null)
+                return false;
+
+            if ((LinkFilteringChannels.Contains(usrMsg.Channel.Id)
+                || LinkFilteringServers.Contains(guild.Id))
+                && usrMsg.Content.TryGetUrlPath(out _))
+            {
+                try
+                {
+                    await usrMsg.DeleteAsync().ConfigureAwait(false);
+                    return true;
+                }
+                catch (HttpException ex)
+                {
+                    _log.Warn("I do not have permission to filter links in channel with id " + usrMsg.Channel.Id, ex);
                     return true;
                 }
             }

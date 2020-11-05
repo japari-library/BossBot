@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Discord;
-using Discord.Net;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NadekoBot.Core.Common.TypeReaders.Models;
 using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Extensions;
+using NLog;
+using NLog.Fluent;
 
 namespace NadekoBot.Modules.Administration.Services
 {
@@ -17,14 +19,22 @@ namespace NadekoBot.Modules.Administration.Services
     {
         private readonly MuteService _mute;
         private readonly DbService _db;
+        private readonly Logger _log;
+        private readonly Timer _warnExpiryTimer;
 
         public UserPunishService(MuteService mute, DbService db)
         {
             _mute = mute;
             _db = db;
+            _log = LogManager.GetCurrentClassLogger();
+
+            _warnExpiryTimer = new Timer(async _ =>
+            {
+                await CheckAllWarnExpiresAsync();
+            }, null, TimeSpan.FromSeconds(0), TimeSpan.FromHours(12));
         }
 
-        public async Task<PunishmentAction?> Warn(IGuild guild, ulong userId, IUser mod, string reason)
+        public async Task<WarningPunishment> Warn(IGuild guild, ulong userId, IUser mod, string reason)
         {
             var modName = mod.ToString();
 
@@ -44,7 +54,7 @@ namespace NadekoBot.Modules.Administration.Services
 
             int warnings = 1;
             List<WarningPunishment> ps;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 ps = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.WarnPunishments))
                     .WarnPunishments;
@@ -56,7 +66,7 @@ namespace NadekoBot.Modules.Administration.Services
 
                 uow.Warnings.Add(warn);
 
-                uow.Complete();
+                uow.SaveChanges();
             }
 
             var p = ps.FirstOrDefault(x => x.Count == warnings);
@@ -66,13 +76,27 @@ namespace NadekoBot.Modules.Administration.Services
                 var user = await guild.GetUserAsync(userId).ConfigureAwait(false);
                 if (user == null)
                     return null;
+
+                var muteReason = "Warning punishment - " + reason;
                 switch (p.Punishment)
                 {
                     case PunishmentAction.Mute:
                         if (p.Time == 0)
-                            await _mute.MuteUser(user, mod).ConfigureAwait(false);
+                            await _mute.MuteUser(user, mod, reason: muteReason).ConfigureAwait(false);
                         else
-                            await _mute.TimedMute(user, mod, TimeSpan.FromMinutes(p.Time)).ConfigureAwait(false);
+                            await _mute.TimedMute(user, mod, TimeSpan.FromMinutes(p.Time), reason: muteReason).ConfigureAwait(false);
+                        break;
+                    case PunishmentAction.VoiceMute:
+                        if (p.Time == 0)
+                            await _mute.MuteUser(user, mod, MuteType.Voice, muteReason).ConfigureAwait(false);
+                        else
+                            await _mute.TimedMute(user, mod, TimeSpan.FromMinutes(p.Time), MuteType.Voice, muteReason).ConfigureAwait(false);
+                        break;
+                    case PunishmentAction.ChatMute:
+                        if (p.Time == 0)
+                            await _mute.MuteUser(user, mod, MuteType.Chat, muteReason).ConfigureAwait(false);
+                        else
+                            await _mute.TimedMute(user, mod, TimeSpan.FromMinutes(p.Time), MuteType.Chat, muteReason).ConfigureAwait(false);
                         break;
                     case PunishmentAction.Kick:
                         await user.KickAsync("Warned too many times.").ConfigureAwait(false);
@@ -97,18 +121,102 @@ namespace NadekoBot.Modules.Administration.Services
                     case PunishmentAction.RemoveRoles:
                         await user.RemoveRolesAsync(user.GetRoles().Where(x => x.Id != guild.EveryoneRole.Id)).ConfigureAwait(false);
                         break;
+                    case PunishmentAction.AddRole:
+                        var role = guild.GetRole(p.RoleId.Value);
+                        if (!(role is null))
+                        {
+                            if(p.Time == 0)
+                                await user.AddRoleAsync(role).ConfigureAwait(false);
+                            else
+                                await _mute.TimedRole(user, TimeSpan.FromMinutes(p.Time), "Warned too many times.", role).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _log.Warn($"Warnpunish can't find role {p.RoleId.Value} on server {guild.Id}");
+                        }
+                        break;
                     default:
                         break;
                 }
-                return p.Punishment;
+                return p;
             }
 
             return null;
         }
 
+        public async Task CheckAllWarnExpiresAsync()
+        {
+            using (var uow = _db.GetDbContext())
+            {
+                var cleared = await uow._context.Database.ExecuteSqlRawAsync($@"UPDATE Warnings
+SET Forgiven = 1,
+    ForgivenBy = 'Expiry'
+WHERE GuildId in (SELECT GuildId FROM GuildConfigs WHERE WarnExpireHours > 0 AND WarnExpireAction = 0)
+	AND Forgiven = 0
+	AND DateAdded < datetime('now', (SELECT '-' || WarnExpireHours || ' hours' FROM GuildConfigs as gc WHERE gc.GuildId = Warnings.GuildId));");
+
+                var deleted = await uow._context.Database.ExecuteSqlRawAsync($@"DELETE FROM Warnings
+WHERE GuildId in (SELECT GuildId FROM GuildConfigs WHERE WarnExpireHours > 0 AND WarnExpireAction = 1)
+	AND DateAdded < datetime('now', (SELECT '-' || WarnExpireHours || ' hours' FROM GuildConfigs as gc WHERE gc.GuildId = Warnings.GuildId));");
+
+                if(cleared > 0 || deleted > 0)
+                {
+                    _log.Info($"Cleared {cleared} warnings and deleted {deleted} warnings due to expiry.");
+                }
+            }
+        }
+
+        public async Task CheckWarnExpiresAsync(ulong guildId)
+        {
+            using (var uow = _db.GetDbContext())
+            {
+                var config = uow.GuildConfigs.ForId(guildId, inc => inc);
+
+                if (config.WarnExpireHours == 0)
+                    return;
+
+                var hours = $"{-config.WarnExpireHours} hours";
+                if (config.WarnExpireAction == WarnExpireAction.Clear)
+                {
+                    await uow._context.Database.ExecuteSqlInterpolatedAsync($@"UPDATE warnings
+SET Forgiven = 1,
+    ForgivenBy = 'Expiry'
+WHERE GuildId={guildId}
+    AND Forgiven = 0
+    AND DateAdded < datetime('now', {hours})");
+                }
+                else if (config.WarnExpireAction == WarnExpireAction.Delete)
+                {
+                    await uow._context.Database.ExecuteSqlInterpolatedAsync($@"DELETE FROM warnings
+WHERE GuildId={guildId}
+    AND DateAdded < datetime('now', {hours})");
+                }
+
+                await uow.SaveChangesAsync();
+            }
+        }
+
+        public async Task WarnExpireAsync(ulong guildId, int days, bool delete)
+        {
+            using (var uow = _db.GetDbContext())
+            {
+                var config = uow.GuildConfigs.ForId(guildId, inc => inc);
+
+                config.WarnExpireHours = days * 24;
+                config.WarnExpireAction = delete ? WarnExpireAction.Delete : WarnExpireAction.Clear;
+                await uow.SaveChangesAsync();
+
+                // no need to check for warn expires
+                if (config.WarnExpireHours == 0)
+                    return;
+            }
+
+            await CheckWarnExpiresAsync(guildId);
+        }
+
         public IGrouping<ulong, Warning>[] WarnlogAll(ulong gid)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 return uow.Warnings.GetForGuild(gid).GroupBy(x => x.UserId).ToArray();
             }
@@ -116,7 +224,7 @@ namespace NadekoBot.Modules.Administration.Services
 
         public Warning[] UserWarnings(ulong gid, ulong userId)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 return uow.Warnings.ForId(gid, userId);
             }
@@ -125,7 +233,7 @@ namespace NadekoBot.Modules.Administration.Services
         public async Task<bool> WarnClearAsync(ulong guildId, ulong userId, int index, string moderator)
         {
             bool toReturn = true;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 if (index == 0)
                 {
@@ -135,19 +243,20 @@ namespace NadekoBot.Modules.Administration.Services
                 {
                     toReturn = uow.Warnings.Forgive(guildId, userId, moderator, index - 1);
                 }
-                uow.Complete();
+                uow.SaveChanges();
             }
             return toReturn;
         }
 
-        public bool WarnPunish(ulong guildId, int number, PunishmentAction punish, StoopidTime time)
+        public bool WarnPunish(ulong guildId, int number, PunishmentAction punish, StoopidTime time, IRole role = null)
         {
-            if ((punish != PunishmentAction.Ban && punish != PunishmentAction.Mute) && time != null)
+            // these 3 don't make sense with time
+            if ((punish == PunishmentAction.Softban || punish == PunishmentAction.Kick || punish == PunishmentAction.RemoveRoles) && time != null)
                 return false;
             if (number <= 0 || (time != null && time.Time > TimeSpan.FromDays(49)))
                 return false;
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var ps = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.WarnPunishments)).WarnPunishments;
                 var toDelete = ps.Where(x => x.Count == number);
@@ -159,18 +268,19 @@ namespace NadekoBot.Modules.Administration.Services
                     Count = number,
                     Punishment = punish,
                     Time = (int?)(time?.Time.TotalMinutes) ?? 0,
+                    RoleId = punish == PunishmentAction.AddRole ? role.Id : default(ulong?),
                 });
-                uow.Complete();
+                uow.SaveChanges();
             }
             return true;
         }
 
-        public bool WarnPunish(ulong guildId, int number)
+        public bool WarnPunishRemove(ulong guildId, int number)
         {
             if (number <= 0)
                 return false;
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var ps = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.WarnPunishments)).WarnPunishments;
                 var p = ps.FirstOrDefault(x => x.Count == number);
@@ -178,7 +288,7 @@ namespace NadekoBot.Modules.Administration.Services
                 if (p != null)
                 {
                     uow._context.Remove(p);
-                    uow.Complete();
+                    uow.SaveChanges();
                 }
             }
             return true;
@@ -186,7 +296,7 @@ namespace NadekoBot.Modules.Administration.Services
 
         public WarningPunishment[] WarnPunishList(ulong guildId)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 return uow.GuildConfigs.ForId(guildId, gc => gc.Include(x => x.WarnPunishments))
                     .WarnPunishments
@@ -228,7 +338,7 @@ namespace NadekoBot.Modules.Administration.Services
                 .Select(x => x.Id.Value)
                 .ToArray();
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var bc = uow.BotConfig.GetOrCreate(set => set.Include(x => x.Blacklist));
                 //blacklist the users
@@ -240,7 +350,7 @@ namespace NadekoBot.Modules.Administration.Services
                     }));
                 //clear their currencies
                 uow.DiscordUsers.RemoveFromMany(found.Select(x => x).ToList());
-                uow.Complete();
+                uow.SaveChanges();
             }
 
             return (bans, missing);

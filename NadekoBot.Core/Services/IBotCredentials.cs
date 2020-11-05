@@ -5,13 +5,10 @@ namespace NadekoBot.Core.Services
 {
     public interface IBotCredentials
     {
-        ulong ClientId { get; }
-
         string Token { get; }
         string GoogleApiKey { get; }
         ImmutableArray<ulong> OwnerIds { get; }
         string MashapeKey { get; }
-        string LoLApiKey { get; }
         string PatreonAccessToken { get; }
         string CarbonKey { get; }
 
@@ -25,15 +22,15 @@ namespace NadekoBot.Core.Services
         string PatreonCampaignId { get; }
         string CleverbotApiKey { get; }
         RestartConfig RestartCommand { get; }
-        string MiningProxyUrl { get; }
-        string MiningProxyCreds { get; }
         string VotesUrl { get; }
         string VotesToken { get; }
         string BotListToken { get; }
         string TwitchClientId { get; }
         string RedisOptions { get; }
-
         string KFTriviaBaseURL { get; }
+        string LocationIqApiKey { get; }
+        string TimezoneDbApiKey { get; }
+        string CoinmarketcapApiKey { get; }
     }
 
     public class RestartConfig

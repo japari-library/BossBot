@@ -24,12 +24,14 @@ namespace NadekoBot.Modules.Administration.Services
         private readonly Logger _log;
         private readonly NadekoBot _bot;
         private readonly DbService _db;
+        private readonly LogCommandService _logService;
 
-        public AdministrationService(NadekoBot bot, CommandHandler cmdHandler, DbService db)
+        public AdministrationService(NadekoBot bot, CommandHandler cmdHandler, DbService db, LogCommandService logService)
         {
             _log = LogManager.GetCurrentClassLogger();
             _bot = bot;
             _db = db;
+            _logService = logService;
 
             DeleteMessagesOnCommand = new ConcurrentHashSet<ulong>(bot.AllGuildConfigs
                 .Where(g => g.DeleteMessageOnCommand)
@@ -45,7 +47,7 @@ namespace NadekoBot.Modules.Administration.Services
 
         public (bool DelMsgOnCmd, IEnumerable<DelMsgOnCmdChannel> channels) GetDelMsgOnCmdData(ulong guildId)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var conf = uow.GuildConfigs.ForId(guildId,
                     set => set.Include(x => x.DelMsgOnCmdChannels));
@@ -66,12 +68,14 @@ namespace NadekoBot.Modules.Administration.Services
                 {
                     if (state && cmd.Name != "prune" && cmd.Name != "pick")
                     {
+                        _logService.AddDeleteIgnore(msg.Id);
                         try { await msg.DeleteAsync().ConfigureAwait(false); } catch { }
                     }
                     //if state is false, that means do not do it
                 }
                 else if (DeleteMessagesOnCommand.Contains(channel.Guild.Id) && cmd.Name != "prune" && cmd.Name != "pick")
                 {
+                    _logService.AddDeleteIgnore(msg.Id);
                     try { await msg.DeleteAsync().ConfigureAwait(false); } catch { }
                 }
             });
@@ -81,49 +85,53 @@ namespace NadekoBot.Modules.Administration.Services
         public bool ToggleDeleteMessageOnCommand(ulong guildId)
         {
             bool enabled;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var conf = uow.GuildConfigs.ForId(guildId, set => set);
                 enabled = conf.DeleteMessageOnCommand = !conf.DeleteMessageOnCommand;
 
-                uow.Complete();
+                uow.SaveChanges();
             }
             return enabled;
         }
 
-        public async Task SetDelMsgOnCmdState(ulong guildId, ulong chId, Administration.State s)
+        public async Task SetDelMsgOnCmdState(ulong guildId, ulong chId, Administration.State newState)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var conf = uow.GuildConfigs.ForId(guildId,
                     set => set.Include(x => x.DelMsgOnCmdChannels));
 
-                var obj = new DelMsgOnCmdChannel()
+                var old = conf.DelMsgOnCmdChannels.FirstOrDefault(x => x.ChannelId == chId);
+                if (newState == Administration.State.Inherit)
                 {
-                    ChannelId = chId,
-                    State = s == Administration.State.Enable,
-                };
-                var del = conf.DelMsgOnCmdChannels.FirstOrDefault(x => x.Equals(obj));
-                if (s != Administration.State.Inherit)
-                    conf.DelMsgOnCmdChannels.Add(obj);
-                else
-                {
-                    if (del != null)
+                    if (!(old is null))
                     {
-                        uow._context.Remove(del);
+                        conf.DelMsgOnCmdChannels.Remove(old);
+                        uow._context.Remove(old);
                     }
                 }
+                else
+                {
+                    if (old is null)
+                    {
+                        old = new DelMsgOnCmdChannel { ChannelId = chId };
+                        conf.DelMsgOnCmdChannels.Add(old);
+                    }
 
-                await uow.CompleteAsync();
+                    old.State = newState == Administration.State.Enable;
+                    DeleteMessagesOnCommandChannels[chId] = newState == Administration.State.Enable;
+                }
+
+                await uow.SaveChangesAsync();
             }
 
-            if (s == Administration.State.Disable)
+            if (newState == Administration.State.Disable)
             {
-                DeleteMessagesOnCommandChannels.AddOrUpdate(chId, false, delegate { return false; });
             }
-            else if (s == Administration.State.Enable)
+            else if (newState == Administration.State.Enable)
             {
-                DeleteMessagesOnCommandChannels.AddOrUpdate(chId, true, delegate { return true; });
+                DeleteMessagesOnCommandChannels[chId] = true;
             }
             else
             {
@@ -148,16 +156,11 @@ namespace NadekoBot.Modules.Administration.Services
             }
         }
 
-        public async Task EditMessage(ICommandContext context, ulong messageId, string text)
+        public async Task EditMessage(ICommandContext context, ITextChannel chanl, ulong messageId, string text)
         {
-            var msgs = await context.Channel.GetMessagesAsync().FlattenAsync()
-                   .ConfigureAwait(false);
+            var msg = await chanl.GetMessageAsync(messageId);
 
-            IUserMessage msg = (IUserMessage)msgs.FirstOrDefault(x => x.Id == messageId
-                && x.Author.Id == context.Client.CurrentUser.Id
-                && x is IUserMessage);
-
-            if (msg == null)
+            if (!(msg is IUserMessage umsg) || msg.Author.Id != context.Client.CurrentUser.Id)
                 return;
 
             var rep = new ReplacementBuilder()
@@ -167,7 +170,7 @@ namespace NadekoBot.Modules.Administration.Services
             if (CREmbed.TryParse(text, out var crembed))
             {
                 rep.Replace(crembed);
-                await msg.ModifyAsync(x =>
+                await umsg.ModifyAsync(x =>
                 {
                     x.Embed = crembed.ToEmbed().Build();
                     x.Content = crembed.PlainText?.SanitizeMentions() ?? "";
@@ -175,8 +178,11 @@ namespace NadekoBot.Modules.Administration.Services
             }
             else
             {
-                await msg.ModifyAsync(x => x.Content = text.SanitizeMentions())
-                    .ConfigureAwait(false);
+                await umsg.ModifyAsync(x =>
+                {
+                    x.Content = text.SanitizeMentions();
+                    x.Embed = null;
+                }).ConfigureAwait(false);
             }
         }
     }

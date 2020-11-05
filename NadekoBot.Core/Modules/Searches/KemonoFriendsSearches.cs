@@ -14,10 +14,11 @@ using System.Text.RegularExpressions;
 using NadekoBot.Core.Common; //for OptionParser
 using Configuration = AngleSharp.Configuration; //for parsing html page
 using AngleSharp;
-using AngleSharp.Dom.Html;
 using NadekoBot.Core.Services;
 using NadekoBot.Core.Common.Pokemon;
 using System.Net;
+using AngleSharp.Html.Dom;
+using AngleSharp.Dom;
 
 namespace NadekoBot.Modules.Searches
 {
@@ -45,11 +46,11 @@ namespace NadekoBot.Modules.Searches
                 // reply to the user if the query is empty or over 1024 characters
                 if (string.IsNullOrWhiteSpace(query))
                 {
-                    await ReplyErrorLocalized("kf_wikisearch_query_empty").ConfigureAwait(false); return;
+                    await ReplyErrorLocalizedAsync("kf_wikisearch_query_empty").ConfigureAwait(false); return;
                 }
                 else if (query.Length > 1024)
                 {
-                    await ReplyErrorLocalized("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
+                    await ReplyErrorLocalizedAsync("kf_wikisearch_query_too_long").ConfigureAwait(false); return;
                 }
 
                 var msg = await Context.Channel.SendMessageAsync(GetText("kf_wikisearch_searching")).ConfigureAwait(false);
@@ -88,7 +89,7 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
                         {
                             imageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
-                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement).InnerText;
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement).GetInnerText();
                         }
 
                         // ! Possible bug in the old version of .NET Core used to build Boss.
@@ -189,8 +190,8 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false))
                         {
                             friendImageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
-                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.InnerText ?? "Name Unavailable";
-                            friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.InnerHtml ?? "Description Unavailable";
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.GetInnerText() ?? "Name Unavailable";
+                            friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.GetInnerText() ?? "Description Unavailable";
                         }
 
                         // ! Possible bug in the old version of .NET Core used to build Boss.
@@ -303,7 +304,7 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(wipPage).ConfigureAwait(false))
                         {
                             friendImageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
-                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.InnerText ?? "Name Unavailable";
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.GetInnerText() ?? "Name Unavailable";
                             friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.InnerHtml ?? "Description Unavailable";
                         }
 
@@ -360,12 +361,12 @@ namespace NadekoBot.Modules.Searches
                 // reply to the user if the query is empty or over 1024 characters
                 if (string.IsNullOrWhiteSpace(query))
                 {
-                    await ReplyErrorLocalized("kf_rateup_query_empty").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("kf_rateup_query_empty").ConfigureAwait(false);
                     return;
                 }
                 else if (query.Length > 64)
                 {
-                    await ReplyErrorLocalized("kf_rateup_query_too_long").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("kf_rateup_query_too_long").ConfigureAwait(false);
                     return;
                 }
 

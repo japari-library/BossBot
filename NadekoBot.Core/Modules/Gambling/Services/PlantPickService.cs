@@ -10,19 +10,19 @@ using NadekoBot.Core.Services.Impl;
 using NadekoBot.Extensions;
 using NLog;
 using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Drawing;
-using SixLabors.ImageSharp.Processing.Drawing.Brushes;
-using SixLabors.ImageSharp.Processing.Text;
-using SixLabors.Primitives;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Image = SixLabors.ImageSharp.Image;
+using Color = SixLabors.ImageSharp.Color;
 
 namespace NadekoBot.Modules.Gambling.Services
 {
@@ -41,6 +41,7 @@ namespace NadekoBot.Modules.Gambling.Services
         public readonly ConcurrentHashSet<ulong> _generationChannels = new ConcurrentHashSet<ulong>();
         //channelId/last generation
         public ConcurrentDictionary<ulong, DateTime> LastGenerations { get; } = new ConcurrentDictionary<ulong, DateTime>();
+        private readonly SemaphoreSlim pickLock = new SemaphoreSlim(1, 1);
 
         public PlantPickService(DbService db, CommandHandler cmd, NadekoBot bot, NadekoStrings strings,
             IDataCache cache, FontProvider fonts, IBotConfigProvider bc, ICurrencyService cs,
@@ -58,10 +59,18 @@ namespace NadekoBot.Modules.Gambling.Services
             _client = client;
 
             cmd.OnMessageNoTrigger += PotentialFlowerGeneration;
-
-            _generationChannels = new ConcurrentHashSet<ulong>(bot
-                .AllGuildConfigs
-                .SelectMany(c => c.GenerateCurrencyChannelIds.Select(obj => obj.ChannelId)));
+            using (var uow = db.GetDbContext())
+            {
+                var guildIds = client.Guilds.Select(x => x.Id).ToList();
+                var configs = uow._context.Set<GuildConfig>()
+                    .AsQueryable()
+                    .Include(x => x.GenerateCurrencyChannelIds)
+                    .Where(x => guildIds.Contains(x.GuildId))
+                    .ToList();
+                
+                _generationChannels = new ConcurrentHashSet<ulong>(configs
+                    .SelectMany(c => c.GenerateCurrencyChannelIds.Select(obj => obj.ChannelId)));
+            }
         }
 
         private string GetText(ulong gid, string key, params object[] rep)
@@ -70,7 +79,7 @@ namespace NadekoBot.Modules.Gambling.Services
         public bool ToggleCurrencyGeneration(ulong gid, ulong cid)
         {
             bool enabled;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var guildConfig = uow.GuildConfigs.ForId(gid, set => set.Include(gc => gc.GenerateCurrencyChannelIds));
 
@@ -91,14 +100,14 @@ namespace NadekoBot.Modules.Gambling.Services
                     _generationChannels.TryRemove(cid);
                     enabled = false;
                 }
-                uow.Complete();
+                uow.SaveChanges();
             }
             return enabled;
         }
 
         public IEnumerable<GeneratingChannel> GetAllGeneratingChannels()
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var chs = uow.GuildConfigs.GetGeneratingChannels();
                 return chs;
@@ -145,7 +154,7 @@ namespace NadekoBot.Modules.Gambling.Services
         {
             // draw lower, it looks better
             pass = pass.TrimTo(10, true).ToLowerInvariant();
-            using (var img = Image.Load(curImg, out var format))
+            using (var img = Image.Load<Rgba32>(curImg, out var format))
             {
                 // choose font size based on the image height, so that it's visible
                 var font = _fonts.NotoSans.CreateFont(img.Height / 12, FontStyle.Bold);
@@ -155,7 +164,7 @@ namespace NadekoBot.Modules.Gambling.Services
                     var size = TextMeasurer.Measure(pass, new RendererOptions(font, new PointF(0, 0)));
 
                     // fill the background with black, add 5 pixels on each side to make it look better
-                    x.FillPolygon(Rgba32.FromHex("00000080"),
+                    x.FillPolygon(Color.ParseHex("00000080"),
                         new PointF(0, 0),
                         new PointF(size.Width + 5, 0),
                         new PointF(size.Width + 5, size.Height + 10),
@@ -164,7 +173,7 @@ namespace NadekoBot.Modules.Gambling.Services
                     // draw the password over the background
                     x.DrawText(pass,
                         font,
-                        Brushes.Solid(Rgba32.White),
+                        SixLabors.ImageSharp.Color.White,
                         new PointF(0, 0));
                 });
                 // return image as a stream for easy sending
@@ -245,35 +254,46 @@ namespace NadekoBot.Modules.Gambling.Services
             // generate a number from 1000 to ffff
             var num = _rng.Next(4096, 65536);
             // convert it to hexadecimal
-            return num.ToString("X");
+            return num.ToString("x4");
         }
 
         public async Task<long> PickAsync(ulong gid, ITextChannel ch, ulong uid, string pass)
         {
-            long amount;
-            ulong[] ids;
-            using (var uow = _db.UnitOfWork)
-            {
-                // this method will sum all plants with that password, 
-                // remove them, and get messageids of the removed plants
-                (amount, ids) = uow.PlantedCurrency.RemoveSumAndGetMessageIdsFor(ch.Id, pass);
-                if (amount > 0)
-                {
-                    // give the picked currency to the user
-                    await _cs.AddAsync(uid, "Picked currency", amount, gamble: false);
-                }
-                uow.Complete();
-            }
-
+            await pickLock.WaitAsync();
             try
             {
-                // delete all of the plant messages which have just been picked
-                var _ = ch.DeleteMessagesAsync(ids);
-            }
-            catch { }
+                long amount;
+                ulong[] ids;
+                using (var uow = _db.GetDbContext())
+                {
+                    // this method will sum all plants with that password,
+                    // remove them, and get messageids of the removed plants
 
-            // return the amount of currency the user picked
-            return amount;
+                    (amount, ids) = uow.PlantedCurrency.RemoveSumAndGetMessageIdsFor(ch.Id, pass);
+
+
+                    if (amount > 0)
+                    {
+                        // give the picked currency to the user
+                        await _cs.AddAsync(uid, "Picked currency", amount, gamble: false);
+                    }
+                    uow.SaveChanges();
+                }
+
+                try
+                {
+                    // delete all of the plant messages which have just been picked
+                    var _ = ch.DeleteMessagesAsync(ids);
+                }
+                catch { }
+
+                // return the amount of currency the user picked
+                return amount;
+            }
+            finally
+            {
+                pickLock.Release();
+            }
         }
 
         public async Task<ulong?> SendPlantMessageAsync(ulong gid, IMessageChannel ch, string user, long amount, string pass)
@@ -311,7 +331,7 @@ namespace NadekoBot.Modules.Gambling.Services
 
         public async Task<bool> PlantAsync(ulong gid, IMessageChannel ch, ulong uid, string user, long amount, string pass)
         {
-            // normalize it - no more than 10 chars, uppercase 
+            // normalize it - no more than 10 chars, uppercase
             pass = pass?.Trim().TrimTo(10, hideDots: true).ToUpperInvariant();
             // has to be either null or alphanumeric
             if (!string.IsNullOrWhiteSpace(pass) && !pass.IsAlphaNumeric())
@@ -338,7 +358,7 @@ namespace NadekoBot.Modules.Gambling.Services
 
         private async Task AddPlantToDatabase(ulong gid, ulong cid, ulong uid, ulong mid, long amount, string pass)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 uow.PlantedCurrency.Add(new PlantedCurrency
                 {
@@ -349,7 +369,7 @@ namespace NadekoBot.Modules.Gambling.Services
                     UserId = uid,
                     MessageId = mid,
                 });
-                await uow.CompleteAsync();
+                await uow.SaveChangesAsync();
             }
         }
     }

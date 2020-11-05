@@ -13,15 +13,13 @@ namespace NadekoBot.Core.Services.Impl
     public class BotCredentials : IBotCredentials
     {
         private Logger _log;
-
-        public ulong ClientId { get; }
+        
         public string GoogleApiKey { get; }
         public string MashapeKey { get; }
         public string Token { get; }
 
         public ImmutableArray<ulong> OwnerIds { get; }
 
-        public string LoLApiKey { get; }
         public string OsuApiKey { get; }
         public string CleverbotApiKey { get; }
         public RestartConfig RestartCommand { get; }
@@ -36,8 +34,6 @@ namespace NadekoBot.Core.Services.Impl
         public int ShardRunPort { get; }
 
         public string PatreonCampaignId { get; }
-        public string MiningProxyUrl { get; }
-        public string MiningProxyCreds { get; }
 
         public string TwitchClientId { get; }
 
@@ -45,6 +41,9 @@ namespace NadekoBot.Core.Services.Impl
         public string VotesToken { get; }
         public string BotListToken { get; }
         public string RedisOptions { get; }
+        public string LocationIqApiKey { get; }
+        public string TimezoneDbApiKey { get; }
+        public string CoinmarketcapApiKey { get; }
 
         public string KFTriviaBaseURL { get; }
 
@@ -72,7 +71,6 @@ namespace NadekoBot.Core.Services.Impl
                     Environment.Exit(3);
                 }
                 OwnerIds = data.GetSection("OwnerIds").GetChildren().Select(c => ulong.Parse(c.Value)).ToImmutableArray();
-                LoLApiKey = data[nameof(LoLApiKey)];
                 GoogleApiKey = data[nameof(GoogleApiKey)];
                 MashapeKey = data[nameof(MashapeKey)];
                 OsuApiKey = data[nameof(OsuApiKey)];
@@ -81,8 +79,13 @@ namespace NadekoBot.Core.Services.Impl
                 ShardRunCommand = data[nameof(ShardRunCommand)];
                 ShardRunArguments = data[nameof(ShardRunArguments)];
                 CleverbotApiKey = data[nameof(CleverbotApiKey)];
-                MiningProxyUrl = data[nameof(MiningProxyUrl)];
-                MiningProxyCreds = data[nameof(MiningProxyCreds)];
+                LocationIqApiKey = data[nameof(LocationIqApiKey)];
+                TimezoneDbApiKey = data[nameof(TimezoneDbApiKey)];
+                CoinmarketcapApiKey = data[nameof(CoinmarketcapApiKey)];
+                if(string.IsNullOrWhiteSpace(CoinmarketcapApiKey))
+                {
+                    CoinmarketcapApiKey = "e79ec505-0913-439d-ae07-069e296a6079";
+                }
                 if (!string.IsNullOrWhiteSpace(data[nameof(RedisOptions)]))
                     RedisOptions = data[nameof(RedisOptions)];
                 else
@@ -123,10 +126,6 @@ namespace NadekoBot.Core.Services.Impl
                     ts = 0;
                 TotalShards = ts < 1 ? 1 : ts;
 
-                if (!ulong.TryParse(data[nameof(ClientId)], out ulong clId))
-                    clId = 0;
-                ClientId = clId;
-
                 CarbonKey = data[nameof(CarbonKey)];
                 var dbSection = data.GetSection("db");
                 Db = new DBConfig(string.IsNullOrWhiteSpace(dbSection["Type"])
@@ -153,12 +152,17 @@ namespace NadekoBot.Core.Services.Impl
 
         }
 
-        private class CredentialsModel
+        /// <summary>
+        /// No idea why this thing exists
+        /// </summary>
+        private class CredentialsModel : IBotCredentials
         {
-            public ulong ClientId { get; set; } = 123123123;
             public string Token { get; set; } = "";
-            public ulong[] OwnerIds { get; set; } = new ulong[1];
-            public string LoLApiKey { get; set; } = "";
+
+            public ulong[] OwnerIds { get; set; } = new ulong[]
+            {
+                // 105635576866156544
+            };
             public string GoogleApiKey { get; set; } = "";
             public string MashapeKey { get; set; } = "";
             public string OsuApiKey { get; set; } = "";
@@ -174,14 +178,28 @@ namespace NadekoBot.Core.Services.Impl
             public string ShardRunCommand { get; set; } = "";
             public string ShardRunArguments { get; set; } = "";
             public int? ShardRunPort { get; set; } = null;
-            public string MiningProxyUrl { get; set; } = null;
-            public string MiningProxyCreds { get; set; } = null;
 
             public string BotListToken { get; set; }
             public string TwitchClientId { get; set; }
             public string VotesToken { get; set; }
             public string VotesUrl { get; set; }
             public string RedisOptions { get; set; }
+            public string LocationIqApiKey { get; set; }
+            public string TimezoneDbApiKey { get; set; }
+            public string CoinmarketcapApiKey { get; set; }
+
+            public string KFTriviaBaseURL { get; set; }
+
+            [JsonIgnore]
+            ImmutableArray<ulong> IBotCredentials.OwnerIds => throw new NotImplementedException();
+
+            [JsonIgnore]
+            RestartConfig IBotCredentials.RestartCommand => throw new NotImplementedException();
+
+            public bool IsOwner(IUser u)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public bool IsOwner(IUser u) => OwnerIds.Contains(u.Id);

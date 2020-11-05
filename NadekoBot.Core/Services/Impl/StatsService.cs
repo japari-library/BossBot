@@ -23,8 +23,8 @@ namespace NadekoBot.Core.Services.Impl
         private readonly IBotCredentials _creds;
         private readonly DateTime _started;
 
-        public const string BotVersion = "2.28.4";
-        public string Author => "Kwoth#2560";
+        public const string BotVersion = "2.35.3";
+        public string Author => "Kwoth#2452";
         public string Library => "Discord.Net";
 
         public string Heap => Math.Round((double)GC.GetTotalMemory(false) / 1.MiB(), 2)
@@ -42,7 +42,6 @@ namespace NadekoBot.Core.Services.Impl
 
         private readonly Timer _carbonitexTimer;
         private readonly Timer _botlistTimer;
-        private readonly Timer _dataTimer;
         private readonly ConnectionMultiplexer _redis;
         private readonly IHttpClientFactory _httpFactory;
 
@@ -193,40 +192,6 @@ namespace NadekoBot.Core.Services.Impl
                     // ignored
                 }
             }, null, TimeSpan.FromMinutes(5), TimeSpan.FromHours(1));
-
-            var platform = "other";
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                platform = "linux";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                platform = "osx";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                platform = "windows";
-
-            _dataTimer = new Timer(async (state) =>
-            {
-                try
-                {
-                    using (var http = _httpFactory.CreateClient())
-                    {
-                        using (var content = new FormUrlEncodedContent(
-                            new Dictionary<string, string> {
-                                    { "id", string.Concat(MD5.Create().ComputeHash(Encoding.ASCII.GetBytes(_creds.ClientId.ToString())).Select(x => x.ToString("X2"))) },
-                                    { "guildCount", nadeko.GuildCount.ToString() },
-                                    { "version", BotVersion },
-                                    { "platform", platform }}))
-                        {
-                            content.Headers.Clear();
-                            content.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-
-                            using (await http.PostAsync(new Uri("https://selfstats.nadekobot.me/"), content).ConfigureAwait(false)) { }
-                        }
-                    }
-                }
-                catch
-                {
-                    // ignored
-                }
-            }, null, TimeSpan.FromSeconds(1), TimeSpan.FromHours(1));
         }
 
         public void Initialize()

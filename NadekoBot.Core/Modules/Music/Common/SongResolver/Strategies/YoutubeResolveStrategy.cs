@@ -22,37 +22,36 @@ namespace NadekoBot.Modules.Music.Common.SongResolver.Strategies
         {
             try
             {
-                SongInfo s = await ResolveWithYtExplode(query).ConfigureAwait(false);
+                var s = await ResolveWithYtDl(query).ConfigureAwait(false);
                 if (s != null)
                     return s;
             }
-            catch { }
-            return await ResolveWithYtDl(query).ConfigureAwait(false);
+            catch (Exception ex) { _log.Warn(ex.ToString()); }
+
+            try
+            {
+                return await ResolveWithYtExplode(query).ConfigureAwait(false);
+            }
+            catch (Exception ex) { _log.Warn(ex.ToString()); }
+            return null;
         }
 
         private async Task<SongInfo> ResolveWithYtExplode(string query)
         {
-            YoutubeExplode.Models.Video video;
             var client = new YoutubeClient();
-            if (!YoutubeClient.TryParseVideoId(query, out var id))
-            {
-                _log.Info("Searching for video");
-                var videos = await client.SearchVideosAsync(query, 1).ConfigureAwait(false);
 
-                video = videos.FirstOrDefault();
-            }
-            else
-            {
-                _log.Info("Getting video with id");
-                video = await client.GetVideoAsync(id).ConfigureAwait(false);
-            }
+            _log.Info("Searching for video");
+            var videos = await client.Search.GetVideosAsync(query);
+
+            var video = videos.FirstOrDefault();
 
             if (video == null)
                 return null;
 
             _log.Info("Video found");
-            var streamInfo = await client.GetVideoMediaStreamInfosAsync(video.Id).ConfigureAwait(false);
-            var stream = streamInfo.Audio
+            var streamInfo = await client.Videos.Streams.GetManifestAsync(video.Id).ConfigureAwait(false);
+            var stream = streamInfo
+                .GetAudio()
                 .OrderByDescending(x => x.Bitrate)
                 .FirstOrDefault();
 
@@ -92,7 +91,9 @@ namespace NadekoBot.Modules.Music.Common.SongResolver.Strategies
                     return null;
                 }
 
-                if (!TimeSpan.TryParseExact(data[4], new[] { "ss", "m\\:ss", "mm\\:ss", "h\\:mm\\:ss", "hh\\:mm\\:ss", "hhh\\:mm\\:ss" }, CultureInfo.InvariantCulture, out var time))
+                if (!TimeSpan.TryParseExact(data[4],
+                    new[] {"ss", "m\\:ss", "mm\\:ss", "h\\:mm\\:ss", "hh\\:mm\\:ss", "hhh\\:mm\\:ss"},
+                    CultureInfo.InvariantCulture, out var time))
                     time = TimeSpan.FromHours(24);
 
                 return new SongInfo()
@@ -108,6 +109,7 @@ namespace NadekoBot.Modules.Music.Common.SongResolver.Strategies
                             _log.Info("No song found. Data less than 6");
                             return null;
                         }
+
                         return data[2];
                     },
                     Thumbnail = data[3],
@@ -122,7 +124,6 @@ namespace NadekoBot.Modules.Music.Common.SongResolver.Strategies
                 _log.Warn(ex);
                 return null;
             }
-
         }
     }
 }

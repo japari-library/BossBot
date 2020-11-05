@@ -32,7 +32,17 @@ namespace NadekoBot.Modules.Administration.Services
             ToAssign = new ConcurrentDictionary<ulong, ConcurrentQueue<(bool, IGuildUser, IRole)>>();
             var missingRoles = new ConcurrentBag<VcRoleInfo>();
 
-            Task.WhenAll(bot.AllGuildConfigs.Select(InitializeVcRole));
+            using (var uow = db.GetDbContext())
+            {
+                var guildIds = client.Guilds.Select(x => x.Id).ToList();
+                var configs = uow._context.Set<GuildConfig>()
+                    .AsQueryable()
+                    .Include(x => x.VcRoleInfos)
+                    .Where(x => guildIds.Contains(x.GuildId))
+                    .ToList();
+                
+                Task.WhenAll(configs.Select(InitializeVcRole));
+            }
 
             Task.Run(async () =>
             {
@@ -72,7 +82,17 @@ namespace NadekoBot.Modules.Administration.Services
 
         private Task Bot_JoinedGuild(GuildConfig arg)
         {
-            var _ = InitializeVcRole(arg);
+            // includeall no longer loads vcrole
+            // need to load new guildconfig with vc role included 
+            using (var uow = _db.GetDbContext())
+            {
+                var configWithVcRole = uow.GuildConfigs.ForId(
+                    arg.GuildId,
+                    set => set.Include(x => x.VcRoleInfos)
+                );
+                var _ = InitializeVcRole(configWithVcRole);
+            }
+
             return Task.CompletedTask;
         }
 
@@ -107,11 +127,11 @@ namespace NadekoBot.Modules.Administration.Services
 
             if (missingRoles.Any())
             {
-                using (var uow = _db.UnitOfWork)
+                using (var uow = _db.GetDbContext())
                 {
                     _log.Warn($"Removing {missingRoles.Count} missing roles from {nameof(VcRoleService)}");
                     uow._context.RemoveRange(missingRoles);
-                    await uow.CompleteAsync();
+                    await uow.SaveChangesAsync();
                 }
             }
         }
@@ -124,7 +144,7 @@ namespace NadekoBot.Modules.Administration.Services
             var guildVcRoles = VcRoles.GetOrAdd(guildId, new ConcurrentDictionary<ulong, IRole>());
 
             guildVcRoles.AddOrUpdate(vcId, role, (key, old) => role);
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var conf = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.VcRoleInfos));
                 var toDelete = conf.VcRoleInfos.FirstOrDefault(x => x.VoiceChannelId == vcId); // remove old one
@@ -137,7 +157,7 @@ namespace NadekoBot.Modules.Administration.Services
                     VoiceChannelId = vcId,
                     RoleId = role.Id,
                 }); // add new one
-                uow.Complete();
+                uow.SaveChanges();
             }
         }
 
@@ -146,14 +166,15 @@ namespace NadekoBot.Modules.Administration.Services
             if (!VcRoles.TryGetValue(guildId, out var guildVcRoles))
                 return false;
 
-            if (!guildVcRoles.TryGetValue(vcId, out _))
+            if (!guildVcRoles.TryRemove(vcId, out _))
                 return false;
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var conf = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.VcRoleInfos));
-                conf.VcRoleInfos.RemoveWhere(x => x.VoiceChannelId == vcId);
-                uow.Complete();
+                var toRemove = conf.VcRoleInfos.Where(x => x.VoiceChannelId == vcId).ToList();
+                uow._context.RemoveRange(toRemove);
+                uow.SaveChanges();
             }
 
             return true;

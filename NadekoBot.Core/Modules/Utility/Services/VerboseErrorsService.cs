@@ -56,29 +56,24 @@ namespace NadekoBot.Modules.Utility.Services
             }
         }
 
-        public bool ToggleVerboseErrors(ulong guildId)
+        public bool ToggleVerboseErrors(ulong guildId, bool? enabled=null)
         {
-            bool enabled;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var gc = uow.GuildConfigs.ForId(guildId, set => set);
 
-                enabled = gc.VerboseErrors = !gc.VerboseErrors;
+                if (enabled==null) enabled = gc.VerboseErrors = !gc.VerboseErrors; // Old behaviour, now behind a condition
+                else gc.VerboseErrors = (bool)enabled; // New behaviour, just set it.
 
-                uow.Complete();
-
-                if (gc.VerboseErrors)
-                    guildsEnabled.Add(guildId);
-                else
-                    guildsEnabled.TryRemove(guildId);
+                uow.SaveChanges();
             }
 
-            if (enabled)
+            if ((bool)enabled) // This doesn't need to be duplicated inside the using block
                 guildsEnabled.Add(guildId);
             else
                 guildsEnabled.TryRemove(guildId);
 
-            return enabled;            
+            return (bool)enabled;            
         }
     }
 }

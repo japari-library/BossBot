@@ -57,7 +57,8 @@ namespace NadekoBot.Modules.Administration.Services
                     if (conf == null)
                         return;
 
-                    var reactionRole = conf.ReactionRoles.FirstOrDefault(x => x.EmoteName == reaction.Emote.Name);
+                    // compare emote names for backwards compatibility :facepalm:
+                    var reactionRole = conf.ReactionRoles.FirstOrDefault(x => x.EmoteName == reaction.Emote.Name || x.EmoteName == reaction.Emote.ToString());
                     if (reactionRole != null)
                     {
                         if (conf.Exclusive)
@@ -71,7 +72,7 @@ namespace NadekoBot.Modules.Administration.Services
                             {
                                 try
                                 {
-                                    //if the role is exclusive, 
+                                    //if the role is exclusive,
                                     // remove all other reactions user added to the message
                                     var dl = await msg.GetOrDownloadAsync().ConfigureAwait(false);
                                     foreach (var r in dl.Reactions)
@@ -80,7 +81,7 @@ namespace NadekoBot.Modules.Administration.Services
                                             continue;
                                         try { await dl.RemoveReactionAsync(r.Key, gusr).ConfigureAwait(false); } catch { }
                                         await Task.Delay(100).ConfigureAwait(false);
-                                    }                                        
+                                    }
                                 }
                                 catch { }
                             });
@@ -132,7 +133,7 @@ namespace NadekoBot.Modules.Administration.Services
                     if (conf == null)
                         return;
 
-                    var reactionRole = conf.ReactionRoles.FirstOrDefault(x => x.EmoteName == reaction.Emote.Name);
+                    var reactionRole = conf.ReactionRoles.FirstOrDefault(x => x.EmoteName == reaction.Emote.Name || x.EmoteName == reaction.Emote.ToString());
 
                     if (reactionRole != null)
                     {
@@ -155,7 +156,7 @@ namespace NadekoBot.Modules.Administration.Services
 
         public bool Add(ulong id, ReactionRoleMessage rrm)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var gc = uow.GuildConfigs.ForId(id, set => set
                     .Include(x => x.ReactionRoleMessages)
@@ -163,19 +164,19 @@ namespace NadekoBot.Modules.Administration.Services
                 if (gc.ReactionRoleMessages.Count >= 5)
                     return false;
                 gc.ReactionRoleMessages.Add(rrm);
-                _models.AddOrUpdate(id, 
-                    gc.ReactionRoleMessages, 
+                _models.AddOrUpdate(id,
+                    gc.ReactionRoleMessages,
                     delegate { return gc.ReactionRoleMessages; });
-                uow.Complete();
+                uow.SaveChanges();
             }
             return true;
         }
 
         public void Remove(ulong id, int index)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
-                var gc = uow.GuildConfigs.ForId(id, 
+                var gc = uow.GuildConfigs.ForId(id,
                     set => set.Include(x => x.ReactionRoleMessages)
                         .ThenInclude(x => x.ReactionRoles));
                 uow._context.Set<ReactionRole>()
@@ -184,7 +185,7 @@ namespace NadekoBot.Modules.Administration.Services
                 _models.AddOrUpdate(id,
                     gc.ReactionRoleMessages,
                     delegate { return gc.ReactionRoleMessages; });
-                uow.Complete();
+                uow.SaveChanges();
             }
         }
     }

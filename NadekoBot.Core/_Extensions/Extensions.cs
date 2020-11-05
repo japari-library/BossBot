@@ -5,16 +5,18 @@ using Microsoft.Extensions.DependencyInjection;
 using NadekoBot.Common;
 using NadekoBot.Common.Collections;
 using NadekoBot.Core.Services;
+using NadekoBot.Modules.Administration.Services;
 using Newtonsoft.Json;
 using NLog;
+using SixLabors.Fonts;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing;
+using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Drawing;
-using SixLabors.Primitives;
-using SixLabors.Shapes;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -36,39 +38,80 @@ namespace NadekoBot.Extensions
     {
         private static Logger _log = LogManager.GetCurrentClassLogger();
 
-        // https://github.com/SixLabors/ImageSharp/tree/master/samples/AvatarWithRoundedCorner
-        public static void ApplyRoundedCorners(this Image<Rgba32> img, float cornerRadius)
+        public static Regex UrlRegex = new Regex(@"^(https?|ftp)://(?<path>[^\s/$.?#].[^\s]*)$", RegexOptions.Compiled);
+
+        public static List<ulong> GetGuildIds(this DiscordSocketClient client)
+            => client.Guilds.Select(x => x.Id).ToList();
+
+        /// <summary>
+        /// Generates a string in the format HHH:mm if timespan is <= 2m.
+        /// Generates a string in the format 00:mm:ss if timespan is less than 2m.
+        /// </summary>
+        /// <param name="span">Timespan to convert to string</param>
+        /// <returns>Formatted duration string</returns>
+        public static string ToPrettyStringHM(this TimeSpan span)
         {
-            var corners = BuildCorners(img.Width, img.Height, cornerRadius);
-            // now we have our corners time to draw them
-            img.Mutate(x => x.Fill(new GraphicsOptions(true)
-            {
-                BlenderMode = PixelBlenderMode.Src // enforces that any part of this shape that has color is punched out of the background
-            },
-            Rgba32.Transparent, corners));
+            if (span < TimeSpan.FromMinutes(2))
+                return $"{span:mm}m {span:ss}s";
+            return $"{(int) span.TotalHours:D2}h {span:mm}m";
         }
 
-        public static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius)
+        public static bool TryGetUrlPath(this string input, out string path)
+        {
+            var match = UrlRegex.Match(input);
+            if (match.Success)
+            {
+                path = match.Groups["path"].Value;
+                return true;
+            }
+            path = string.Empty;
+            return false;
+        }
+
+        public static IEmote ToIEmote(this string emojiStr)
+            => Emote.TryParse(emojiStr, out var maybeEmote)
+                    ? (IEmote)maybeEmote
+                    : new Emoji(emojiStr);
+
+        // https://github.com/SixLabors/Samples/blob/master/ImageSharp/AvatarWithRoundedCorner/Program.cs
+        public static IImageProcessingContext ApplyRoundedCorners(this IImageProcessingContext ctx, float cornerRadius)
+        {
+            Size size = ctx.GetCurrentSize();
+            IPathCollection corners = BuildCorners(size.Width, size.Height, cornerRadius);
+
+            ctx.SetGraphicsOptions(new GraphicsOptions()
+            {
+                Antialias = true,
+                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // enforces that any part of this shape that has color is punched out of the background
+            });
+
+            foreach (var c in corners)
+            {
+                ctx = ctx.Fill(SixLabors.ImageSharp.Color.Red, c);
+            }
+            return ctx;
+        }
+
+        private static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius)
         {
             // first create a square
             var rect = new RectangularPolygon(-0.5f, -0.5f, cornerRadius, cornerRadius);
 
             // then cut out of the square a circle so we are left with a corner
-            var cornerToptLeft = rect.Clip(new EllipsePolygon(cornerRadius - 0.5f, cornerRadius - 0.5f, cornerRadius));
+            IPath cornerTopLeft = rect.Clip(new EllipsePolygon(cornerRadius - 0.5f, cornerRadius - 0.5f, cornerRadius));
 
             // corner is now a corner shape positions top left
-            //lets make 3 more positioned correctly, we can do that by translating the orgional around the center of the image
-            var center = new Vector2(imageWidth / 2, imageHeight / 2);
+            //lets make 3 more positioned correctly, we can do that by translating the original around the center of the image
 
-            float rightPos = imageWidth - cornerToptLeft.Bounds.Width + 1;
-            float bottomPos = imageHeight - cornerToptLeft.Bounds.Height + 1;
+            float rightPos = imageWidth - cornerTopLeft.Bounds.Width + 1;
+            float bottomPos = imageHeight - cornerTopLeft.Bounds.Height + 1;
 
             // move it across the width of the image - the width of the shape
-            var cornerTopRight = cornerToptLeft.RotateDegree(90).Translate(rightPos, 0);
-            var cornerBottomLeft = cornerToptLeft.RotateDegree(-90).Translate(0, bottomPos);
-            var cornerBottomRight = cornerToptLeft.RotateDegree(180).Translate(rightPos, bottomPos);
+            IPath cornerTopRight = cornerTopLeft.RotateDegree(90).Translate(rightPos, 0);
+            IPath cornerBottomLeft = cornerTopLeft.RotateDegree(-90).Translate(0, bottomPos);
+            IPath cornerBottomRight = cornerTopLeft.RotateDegree(180).Translate(rightPos, bottomPos);
 
-            return new PathCollection(cornerToptLeft, cornerBottomLeft, cornerTopRight, cornerBottomRight);
+            return new PathCollection(cornerTopLeft, cornerBottomLeft, cornerTopRight, cornerBottomRight);
         }
 
         /// <summary>
@@ -149,11 +192,15 @@ namespace NadekoBot.Extensions
             dict.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.835.202 Safari/535.1");
         }
 
-        public static IMessage DeleteAfter(this IUserMessage msg, int seconds)
+        public static IMessage DeleteAfter(this IUserMessage msg, int seconds, LogCommandService logService = null)
         {
             Task.Run(async () =>
             {
                 await Task.Delay(seconds * 1000).ConfigureAwait(false);
+                if(logService != null)
+                {
+                    logService.AddDeleteIgnore(msg.Id);
+                }
                 try { await msg.DeleteAsync().ConfigureAwait(false); }
                 catch { }
             });
@@ -193,6 +240,33 @@ namespace NadekoBot.Extensions
         public static string ToJson<T>(this T any, Formatting formatting = Formatting.Indented) =>
             JsonConvert.SerializeObject(any, formatting);
 
+        /// <summary>
+        /// Adds fallback fonts to <see cref="TextOptions"/>
+        /// </summary>
+        /// <param name="opts"><see cref="TextOptions"/> to which fallback fonts will be added to</param>
+        /// <param name="fallback">List of fallback Font Families to add</param>
+        /// <returns>The same <see cref="TextOptions"/> to allow chaining</returns>
+        public static TextOptions WithFallbackFonts(this TextOptions opts, List<FontFamily> fallback)
+        {
+            foreach (var ff in fallback)
+            {
+                opts.FallbackFonts.Add(ff);
+            }
+            return opts;
+        }
+
+        /// <summary>
+        /// Adds fallback fonts to <see cref="TextGraphicsOptions"/>
+        /// </summary>
+        /// <param name="opts"><see cref="TextGraphicsOptions"/> to which fallback fonts will be added to</param>
+        /// <param name="fallback">List of fallback Font Families to add</param>
+        /// <returns>The same <see cref="TextGraphicsOptions"/> to allow chaining</returns>
+        public static TextGraphicsOptions WithFallbackFonts(this TextGraphicsOptions opts, List<FontFamily> fallback)
+        {
+            opts.TextOptions.WithFallbackFonts(fallback);
+            return opts;
+        }
+
         public static MemoryStream ToStream(this Image<Rgba32> img, IImageFormat format = null)
         {
             var imageStream = new MemoryStream();
@@ -202,7 +276,11 @@ namespace NadekoBot.Extensions
             }
             else
             {
-                img.SaveAsPng(imageStream, new PngEncoder() { CompressionLevel = 9 });
+                img.SaveAsPng(imageStream, new PngEncoder()
+                {
+                    ColorType = PngColorType.RgbWithAlpha,
+                    CompressionLevel = PngCompressionLevel.BestCompression
+                });
             }
             imageStream.Position = 0;
             return imageStream;
@@ -215,7 +293,6 @@ namespace NadekoBot.Extensions
         /// <param name="list"></param>
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> items)
         {
-            // Thanks to @Joe4Evr for finding a bug in the old version of the shuffle
             using (var provider = RandomNumberGenerator.Create())
             {
                 var list = items.ToList();
@@ -273,14 +350,14 @@ namespace NadekoBot.Extensions
         }
         public static Image<Rgba32> Merge(this IEnumerable<Image<Rgba32>> images, out IImageFormat format)
         {
-            format = ImageFormats.Png;
+            format = PngFormat.Instance;
             void DrawFrame(Image<Rgba32>[] imgArray, Image<Rgba32> imgFrame, int frameNumber)
             {
                 var xOffset = 0;
                 for (int i = 0; i < imgArray.Length; i++)
                 {
                     var frame = imgArray[i].Frames.CloneFrame(frameNumber % imgArray[i].Frames.Count);
-                    imgFrame.Mutate(x => x.DrawImage(GraphicsOptions.Default, frame, new Point(xOffset, 0)));
+                    imgFrame.Mutate(x => x.DrawImage(frame, new Point(xOffset, 0), new GraphicsOptions()));
                     xOffset += imgArray[i].Bounds().Width;
                 }
             }
@@ -297,15 +374,15 @@ namespace NadekoBot.Extensions
                 return canvas;
             }
 
-            format = ImageFormats.Gif;
+            format = GifFormat.Instance;
             for (int j = 0; j < frames; j++)
             {
                 using (var imgFrame = new Image<Rgba32>(width, height))
                 {
                     DrawFrame(imgs, imgFrame, j);
 
-                    var frameToAdd = imgFrame.Frames.First();
-                    frameToAdd.MetaData.DisposalMethod = SixLabors.ImageSharp.Formats.Gif.DisposalMethod.RestoreToBackground;
+                    var frameToAdd = imgFrame.Frames[0];
+                    frameToAdd.Metadata.GetGifMetadata().DisposalMethod = GifDisposalMethod.RestoreToBackground;
                     canvas.Frames.AddFrame(frameToAdd);
                 }
             }
@@ -319,15 +396,18 @@ namespace NadekoBot.Extensions
             sw.Reset();
         }
 
-        public static bool IsImage(this HttpResponseMessage msg)
+        public static bool IsImage(this HttpResponseMessage msg) => IsImage(msg, out _);
+
+        public static bool IsImage(this HttpResponseMessage msg, out string mimeType)
         {
-            if (msg.Content.Headers.ContentType.MediaType != "image/png"
-                                && msg.Content.Headers.ContentType.MediaType != "image/jpeg"
-                                && msg.Content.Headers.ContentType.MediaType != "image/gif")
+            mimeType = msg.Content.Headers.ContentType.MediaType;
+            if (mimeType == "image/png"
+                    || mimeType == "image/jpeg"
+                    || mimeType == "image/gif")
             {
-                return false;
+                return true;
             }
-            return true;
+            return false;
         }
 
         public static long? GetImageSize(this HttpResponseMessage msg)
@@ -388,7 +468,7 @@ namespace NadekoBot.Extensions
                 if (collection.FirstOrDefault(x => x.ServiceType == serviceType) != null) // if that type is already added, skip
                     continue;
 
-                //also add the same type 
+                //also add the same type
                 var interfaceType = interfaces.FirstOrDefault(x => serviceType.GetInterfaces().Contains(x));
                 if (interfaceType != null)
                 {

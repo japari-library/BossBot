@@ -1,4 +1,5 @@
 ﻿using NadekoBot.Common.Collections;
+using NadekoBot.Core.Common.TypeReaders.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -56,7 +57,9 @@ namespace NadekoBot.Core.Services.Database.Models
 
         //filtering
         public bool FilterInvites { get; set; }
+        public bool FilterLinks { get; set; }
         public HashSet<FilterChannelId> FilterInvitesChannelIds { get; set; } = new HashSet<FilterChannelId>();
+        public HashSet<FilterLinksChannelId> FilterLinksChannelIds { get; set; } = new HashSet<FilterLinksChannelId>();
 
         //public bool FilterLinks { get; set; }
         //public HashSet<FilterLinksChannelId> FilterLinksChannels { get; set; } = new HashSet<FilterLinksChannelId>();
@@ -79,6 +82,7 @@ namespace NadekoBot.Core.Services.Database.Models
 
         public HashSet<UnmuteTimer> UnmuteTimers { get; set; } = new HashSet<UnmuteTimer>();
         public HashSet<UnbanTimer> UnbanTimer { get; set; } = new HashSet<UnbanTimer>();
+        public HashSet<UnroleTimer> UnroleTimer { get; set; } = new HashSet<UnroleTimer>();
         public HashSet<VcRoleInfo> VcRoleInfos { get; set; }
         public HashSet<CommandAlias> CommandAliases { get; set; } = new HashSet<CommandAlias>();
         public List<WarningPunishment> WarnPunishments { get; set; } = new List<WarningPunishment>();
@@ -100,232 +104,7 @@ namespace NadekoBot.Core.Services.Database.Models
         public IndexedCollection<ReactionRoleMessage> ReactionRoleMessages { get; set; } = new IndexedCollection<ReactionRoleMessage>();
         public bool NotifyStreamOffline { get; set; }
         public List<GroupName> SelfAssignableRoleGroupNames { get; set; }
-    }
-
-    public class GroupName : DbEntity
-    {
-        public int GuildConfigId { get; set; }
-        public GuildConfig GuildConfig { get; set; }
-
-        public int Number { get; set; }
-        public string Name { get; set; }
-    }
-
-    public class DelMsgOnCmdChannel : DbEntity
-    {
-        public ulong ChannelId { get; set; }
-        public bool State { get; set; }
-
-        public override int GetHashCode()
-        {
-            return ChannelId.GetHashCode();
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is DelMsgOnCmdChannel x
-                && x.ChannelId == ChannelId;
-        }
-    }
-
-    public class NsfwBlacklitedTag : DbEntity
-    {
-        public string Tag { get; set; }
-
-        public override int GetHashCode()
-        {
-            return Tag.GetHashCode(StringComparison.InvariantCulture);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is NsfwBlacklitedTag x
-                ? x.Tag == Tag
-                : false;
-        }
-    }
-
-    public class SlowmodeIgnoredUser : DbEntity
-    {
-        public ulong UserId { get; set; }
-
-        // override object.Equals
-        public override bool Equals(object obj)
-        {
-            if (obj == null || GetType() != obj.GetType())
-            {
-                return false;
-            }
-
-            return ((SlowmodeIgnoredUser)obj).UserId == UserId;
-        }
-
-        // override object.GetHashCode
-        public override int GetHashCode()
-        {
-            return UserId.GetHashCode();
-        }
-    }
-
-    public class SlowmodeIgnoredRole : DbEntity
-    {
-        public ulong RoleId { get; set; }
-
-        // override object.Equals
-        public override bool Equals(object obj)
-        {
-            if (obj == null || GetType() != obj.GetType())
-            {
-                return false;
-            }
-
-            return ((SlowmodeIgnoredRole)obj).RoleId == RoleId;
-        }
-
-        // override object.GetHashCode
-        public override int GetHashCode()
-        {
-            return RoleId.GetHashCode();
-        }
-    }
-
-    public class WarningPunishment : DbEntity
-    {
-        public int Count { get; set; }
-        public PunishmentAction Punishment { get; set; }
-        public int Time { get; set; }
-    }
-
-    public class CommandAlias : DbEntity
-    {
-        public string Trigger { get; set; }
-        public string Mapping { get; set; }
-
-        //// override object.Equals
-        //public override bool Equals(object obj)
-        //{
-        //    if (obj == null || GetType() != obj.GetType())
-        //    {
-        //        return false;
-        //    }
-
-        //    return ((CommandAlias)obj).Trigger.Trim().ToLowerInvariant() == Trigger.Trim().ToLowerInvariant();
-        //}
-
-        //// override object.GetHashCode
-        //public override int GetHashCode()
-        //{
-        //    return Trigger.Trim().ToLowerInvariant().GetHashCode();
-        //}
-    }
-
-    public class VcRoleInfo : DbEntity
-    {
-        public ulong VoiceChannelId { get; set; }
-        public ulong RoleId { get; set; }
-    }
-
-    public class UnmuteTimer : DbEntity
-    {
-        public ulong UserId { get; set; }
-        public DateTime UnmuteAt { get; set; }
-
-        public override int GetHashCode() =>
-            UserId.GetHashCode();
-
-        public override bool Equals(object obj)
-        {
-            return obj is UnmuteTimer ut
-                ? ut.UserId == UserId
-                : false;
-        }
-    }
-
-    public class UnbanTimer : DbEntity
-    {
-        public ulong UserId { get; set; }
-        public DateTime UnbanAt { get; set; }
-
-        public override int GetHashCode() =>
-            UserId.GetHashCode();
-
-        public override bool Equals(object obj)
-        {
-            return obj is UnbanTimer ut
-                ? ut.UserId == UserId
-                : false;
-        }
-    }
-
-    public class FilterChannelId : DbEntity
-    {
-        public ulong ChannelId { get; set; }
-
-        public override bool Equals(object obj)
-        {
-            return obj is FilterChannelId f
-                ? f.ChannelId == ChannelId
-                : false;
-        }
-
-        public override int GetHashCode()
-        {
-            return ChannelId.GetHashCode();
-        }
-    }
-
-    public class FilterLinksChannelId : DbEntity
-    {
-        public ulong ChannelId { get; set; }
-
-        public override bool Equals(object obj)
-        {
-            return obj is FilterLinksChannelId f
-                ? f.ChannelId == ChannelId
-                : false;
-        }
-
-        public override int GetHashCode()
-        {
-            return ChannelId.GetHashCode();
-        }
-    }
-
-    public class FilteredWord : DbEntity
-    {
-        public string Word { get; set; }
-    }
-
-    public class MutedUserId : DbEntity
-    {
-        public ulong UserId { get; set; }
-
-        public override int GetHashCode()
-        {
-            return UserId.GetHashCode();
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is MutedUserId mui
-                ? mui.UserId == UserId
-                : false;
-        }
-    }
-
-    public class GCChannelId : DbEntity
-    {
-        public GuildConfig GuildConfig { get; set; }
-        public ulong ChannelId { get; set; }
-
-        public override bool Equals(object obj)
-        {
-            return obj is GCChannelId gc
-                ? gc.ChannelId == ChannelId
-                : false;
-        }
-
-        public override int GetHashCode() =>
-            this.ChannelId.GetHashCode();
+        public int WarnExpireHours { get; set; } = 0;
+        public WarnExpireAction WarnExpireAction { get; set; } = WarnExpireAction.Clear;
     }
 }

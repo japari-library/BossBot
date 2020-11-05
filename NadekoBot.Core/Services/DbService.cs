@@ -1,7 +1,5 @@
 ﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using NadekoBot.Core.Services.Database;
 using System;
 using System.IO;
@@ -14,11 +12,11 @@ namespace NadekoBot.Core.Services
         private readonly DbContextOptions<NadekoContext> options;
         private readonly DbContextOptions<NadekoContext> migrateOptions;
 
-        private static readonly ILoggerFactory _loggerFactory = new LoggerFactory(new[] {
-            new ConsoleLoggerProvider((category, level)
-                => category == DbLoggerCategory.Database.Command.Name
-                   && level >= LogLevel.Information, true)
-            });
+        // private static readonly ILoggerFactory _loggerFactory = new LoggerFactory(new[] {
+        //     new ConsoleLoggerProvider((category, level)
+        //         => category == DbLoggerCategory.Database.Command.Name
+        //            && level >= LogLevel.Information, true)
+        //     });
 
         public DbService(IBotCredentials creds)
         {
@@ -32,7 +30,7 @@ namespace NadekoBot.Core.Services
             options = optionsBuilder.Options;
 
             optionsBuilder = new DbContextOptionsBuilder<NadekoContext>();
-            optionsBuilder.UseSqlite(builder.ToString(), x => x.SuppressForeignKeyEnforcement());
+            optionsBuilder.UseSqlite(builder.ToString());
             migrateOptions = optionsBuilder.Options;
         }
 
@@ -47,13 +45,13 @@ namespace NadekoBot.Core.Services
                     mContext.SaveChanges();
                     mContext.Dispose();
                 }
-                context.Database.ExecuteSqlCommand("PRAGMA journal_mode=WAL");
+                context.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL");
                 context.EnsureSeedData();
                 context.SaveChanges();
             }
         }
 
-        public NadekoContext GetDbContext()
+        private NadekoContext GetDbContextInternal()
         {
             var context = new NadekoContext(options);
             context.Database.SetCommandTimeout(60);
@@ -67,7 +65,6 @@ namespace NadekoBot.Core.Services
             return context;
         }
 
-        public IUnitOfWork UnitOfWork =>
-            new UnitOfWork(GetDbContext());
+        public IUnitOfWork GetDbContext() => new UnitOfWork(GetDbContextInternal());
     }
 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Discord;
 using Discord.Commands;
 using NadekoBot.Common.Attributes;
 using NadekoBot.Extensions;
@@ -37,15 +38,31 @@ namespace NadekoBot.Modules.Searches
             }
 
             [NadekoCommand, Usage, Description, Aliases]
-            public async Task Memelist()
+            public async Task Memelist(int page = 1)
             {
+                if (--page < 0)
+                    return;
+
                 using (var http = _httpFactory.CreateClient("memelist"))
                 {
-                    var rawJson = await http.GetStringAsync("https://memegen.link/api/templates/").ConfigureAwait(false);
-                    var data = JsonConvert.DeserializeObject<Dictionary<string, string>>(rawJson)
-                        .Select(kvp => Path.GetFileName(kvp.Value));
+                    var res = await http.GetAsync("https://memegen.link/api/templates/")
+                        .ConfigureAwait(false);
 
-                    await Context.Channel.SendTableAsync(data, x => $"{x,-15}", 3).ConfigureAwait(false);
+                    var rawJson = await res.Content.ReadAsStringAsync();
+                    
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, string>>(rawJson)
+                        .Select(kvp => Path.GetFileName(kvp.Value))
+                        .ToList();
+
+                    await ctx.SendPaginatedConfirmAsync(page, curPage =>
+                    {
+                        var embed = new EmbedBuilder()
+                            .WithOkColor()
+                            .WithDescription(string.Join('\n', data.Skip(curPage * 20).Take(20)));
+
+                        return embed;
+                    }, data.Count, 20);
+                    //await ctx.Channel.SendTableAsync(data, x => $"{x,-15}", 3).ConfigureAwait(false);
                 }
             }
 
@@ -54,7 +71,7 @@ namespace NadekoBot.Modules.Searches
             {
                 var top = Replace(topText);
                 var bot = Replace(botText);
-                await Context.Channel.SendMessageAsync($"http://memegen.link/{meme}/{top}/{bot}.jpg")
+                await ctx.Channel.SendMessageAsync($"http://memegen.link/{meme}/{top}/{bot}.jpg")
                     .ConfigureAwait(false);
             }
 

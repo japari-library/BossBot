@@ -39,7 +39,7 @@ namespace NadekoBot.Modules.Games
 
             public async Task InternalTrivia(params string[] args)
             {
-                var channel = (ITextChannel)Context.Channel;
+                var channel = (ITextChannel)ctx.Channel;
 
                 var (opts, _) = OptionsParser.ParseFrom(new TriviaOptions(), args);
 
@@ -62,7 +62,7 @@ namespace NadekoBot.Modules.Games
                     return;
                 }
 
-                await Context.Channel.SendErrorAsync(GetText("trivia_already_running") + "\n" + trivia.CurrentQuestion)
+                await ctx.Channel.SendErrorAsync(GetText("trivia_already_running") + "\n" + trivia.CurrentQuestion)
                     .ConfigureAwait(false);
             }
 
@@ -70,7 +70,7 @@ namespace NadekoBot.Modules.Games
             [RequireContext(ContextType.Guild)]
             public async Task Tl()
             {
-                var channel = (ITextChannel)Context.Channel;
+                var channel = (ITextChannel)ctx.Channel;
 
                 if (_service.RunningTrivias.TryGetValue(channel.Guild.Id, out TriviaGame trivia))
                 {
@@ -78,14 +78,14 @@ namespace NadekoBot.Modules.Games
                     return;
                 }
 
-                await ReplyErrorLocalized("trivia_none").ConfigureAwait(false);
+                await ReplyErrorLocalizedAsync("trivia_none").ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             public async Task Tq()
             {
-                var channel = (ITextChannel)Context.Channel;
+                var channel = (ITextChannel)ctx.Channel;
 
                 if (_service.RunningTrivias.TryGetValue(channel.Guild.Id, out TriviaGame trivia))
                 {
@@ -93,7 +93,7 @@ namespace NadekoBot.Modules.Games
                     return;
                 }
 
-                await ReplyErrorLocalized("trivia_none").ConfigureAwait(false);
+                await ReplyErrorLocalizedAsync("trivia_none").ConfigureAwait(false);
             }
         }
     }

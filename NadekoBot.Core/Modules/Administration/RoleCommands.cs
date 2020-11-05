@@ -17,12 +17,12 @@ namespace NadekoBot.Modules.Administration
     {
         public class RoleCommands : NadekoSubmodule<RoleCommandsService>
         {
-            public enum Excl { Excl }
+            public enum Exclude { Excl }
 
             public async Task InternalReactionRoles(bool exclusive, params string[] input)
             {
-                var msgs = await ((SocketTextChannel)Context.Channel).GetMessagesAsync().FlattenAsync().ConfigureAwait(false);
-                var prev = (IUserMessage)msgs.FirstOrDefault(x => x is IUserMessage && x.Id != Context.Message.Id);
+                var msgs = await ((SocketTextChannel)ctx.Channel).GetMessagesAsync().FlattenAsync().ConfigureAwait(false);
+                var prev = (IUserMessage)msgs.FirstOrDefault(x => x is IUserMessage && x.Id != ctx.Message.Id);
 
                 if (prev == null)
                     return;
@@ -30,7 +30,7 @@ namespace NadekoBot.Modules.Administration
                 if (input.Length % 2 != 0)
                     return;
 
-                var g = (SocketGuild)Context.Guild;
+                var g = (SocketGuild)ctx.Guild;
 
                 var grp = 0;
                 var all = input
@@ -44,14 +44,16 @@ namespace NadekoBot.Modules.Administration
                             _log.Warn("Role {0} not found.", inputRoleStr);
                             return null;
                         }
-                        var emote = g.Emotes.FirstOrDefault(y => y.ToString() == x.Last());
-                        if (emote == null)
-                        {
-                            _log.Warn("Emote {0} not found.", x.Last());
-                            return null;
-                        }
-                        else
-                            return new { role, emote };
+                        //var emote = g.Emotes.FirstOrDefault(y => y.ToString() == x.Last());
+                        //if (emote == null)
+                        //{
+                        //    _log.Warn("Emote {0} not found.", x.Last());
+                        //    return null;
+                        //}
+                        //else
+
+                        var emote = x.Last().ToIEmote();
+                        return new { role, emote };
                     })
                     .Where(x => x != null);
 
@@ -67,7 +69,7 @@ namespace NadekoBot.Modules.Administration
                     await Task.Delay(100).ConfigureAwait(false);
                 }
 
-                if(_service.Add(Context.Guild.Id, new ReactionRoleMessage()
+                if (_service.Add(ctx.Guild.Id, new ReactionRoleMessage()
                 {
                     Exclusive = exclusive,
                     MessageId = prev.Id,
@@ -76,26 +78,26 @@ namespace NadekoBot.Modules.Administration
                     {
                         return new ReactionRole()
                         {
-                            EmoteName = x.emote.Name,
+                            EmoteName = x.emote.ToString(),
                             RoleId = x.role.Id,
                         };
                     }).ToList(),
                 }))
                 {
-                    await Context.Channel.SendConfirmAsync(":ok:")
+                    await ctx.Channel.SendConfirmAsync(":ok:")
                         .ConfigureAwait(false);
                 }
                 else
                 {
-                    await ReplyErrorLocalized("reaction_roles_full").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("reaction_roles_full").ConfigureAwait(false);
                 }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             [NoPublicBot]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
             [Priority(0)]
             public Task ReactionRoles(params string[] input) =>
                 InternalReactionRoles(false, input);
@@ -103,228 +105,237 @@ namespace NadekoBot.Modules.Administration
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             [NoPublicBot]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
             [Priority(1)]
-            public Task ReactionRoles(Excl _, params string[] input) =>
+            public Task ReactionRoles(Exclude _, params string[] input) =>
                 InternalReactionRoles(true, input);
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             [NoPublicBot]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
             public async Task ReactionRolesList()
             {
                 var embed = new EmbedBuilder()
                     .WithOkColor();
-                if(!_service.Get(Context.Guild.Id, out var rrs) || 
+                if (!_service.Get(ctx.Guild.Id, out var rrs) ||
                     !rrs.Any())
                 {
                     embed.WithDescription(GetText("no_reaction_roles"));
                 }
                 else
                 {
-                    var g = ((SocketGuild)Context.Guild);
+                    var g = ((SocketGuild)ctx.Guild);
                     foreach (var rr in rrs)
                     {
                         var ch = g.GetTextChannel(rr.ChannelId);
                         var msg = (await (ch?.GetMessageAsync(rr.MessageId)).ConfigureAwait(false)) as IUserMessage;
-                        var content = msg?.Content.TrimTo(30) ?? "DELETED!"; 
-                        embed.AddField($"**{rr.Index + 1}.** {(ch?.Name ?? "DELETED!")}", 
+                        var content = msg?.Content.TrimTo(30) ?? "DELETED!";
+                        embed.AddField($"**{rr.Index + 1}.** {(ch?.Name ?? "DELETED!")}",
                             GetText("reaction_roles_message", rr.ReactionRoles?.Count ?? 0, content));
                     }
                 }
-                await Context.Channel.EmbedAsync(embed).ConfigureAwait(false);
+                await ctx.Channel.EmbedAsync(embed).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             [NoPublicBot]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
             public async Task ReactionRolesRemove(int index)
             {
-                if(index < 1 || index > 5 || 
-                    !_service.Get(Context.Guild.Id, out var rrs) ||
+                if (index < 1 || index > 5 ||
+                    !_service.Get(ctx.Guild.Id, out var rrs) ||
                     !rrs.Any() || rrs.Count < index)
                 {
                     return;
                 }
                 index--;
                 var rr = rrs[index];
-                _service.Remove(Context.Guild.Id, index);
-                await ReplyConfirmLocalized("reaction_role_removed", index + 1).ConfigureAwait(false);
+                _service.Remove(ctx.Guild.Id, index);
+                await ReplyConfirmLocalizedAsync("reaction_role_removed", index + 1).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
-            public async Task Setrole(IGuildUser usr, [Remainder] IRole role)
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
+            public async Task SetRole(IGuildUser targetUser, [Leftover] IRole roleToAdd)
             {
-                var guser = (IGuildUser)Context.User;
-                var maxRole = guser.GetRoles().Max(x => x.Position);
-                if ((Context.User.Id != Context.Guild.OwnerId) && (maxRole <= role.Position || maxRole <= usr.GetRoles().Max(x => x.Position)))
+                var runnerUser = (IGuildUser)ctx.User;
+                var runnerMaxRolePosition = runnerUser.GetRoles().Max(x => x.Position);
+                if ((ctx.User.Id != ctx.Guild.OwnerId) && runnerMaxRolePosition <= roleToAdd.Position)
                     return;
                 try
                 {
-                    await usr.AddRoleAsync(role).ConfigureAwait(false);
-                           
-                    await ReplyConfirmLocalized("setrole", Format.Bold(role.Name), Format.Bold(usr.ToString()))
+                    await targetUser.AddRoleAsync(roleToAdd).ConfigureAwait(false);
+
+                    await ReplyConfirmLocalizedAsync("setrole", Format.Bold(roleToAdd.Name), Format.Bold(targetUser.ToString()))
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
-                    await ReplyErrorLocalized("setrole_err").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("setrole_err").ConfigureAwait(false);
                     _log.Info(ex);
                 }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
-            public async Task Removerole(IGuildUser usr, [Remainder] IRole role)
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
+            public async Task RemoveRole(IGuildUser targetUser, [Leftover] IRole roleToRemove)
             {
-                var guser = (IGuildUser)Context.User;
-                if (Context.User.Id != guser.Guild.OwnerId && guser.GetRoles().Max(x => x.Position) <= usr.GetRoles().Max(x => x.Position))
+                var runnerUser = (IGuildUser)ctx.User;
+                if (ctx.User.Id != runnerUser.Guild.OwnerId && runnerUser.GetRoles().Max(x => x.Position) <= roleToRemove.Position)
                     return;
                 try
                 {
-                    await usr.RemoveRoleAsync(role).ConfigureAwait(false);
-                    await ReplyConfirmLocalized("remrole", Format.Bold(role.Name), Format.Bold(usr.ToString())).ConfigureAwait(false);
+                    await targetUser.RemoveRoleAsync(roleToRemove).ConfigureAwait(false);
+                    await ReplyConfirmLocalizedAsync("remrole", Format.Bold(roleToRemove.Name), Format.Bold(targetUser.ToString())).ConfigureAwait(false);
                 }
                 catch
                 {
-                    await ReplyErrorLocalized("remrole_err").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("remrole_err").ConfigureAwait(false);
                 }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
             public async Task RenameRole(IRole roleToEdit, string newname)
             {
-                var guser = (IGuildUser)Context.User;
-                if (Context.User.Id != guser.Guild.OwnerId && guser.GetRoles().Max(x => x.Position) <= roleToEdit.Position)
+                var guser = (IGuildUser)ctx.User;
+                if (ctx.User.Id != guser.Guild.OwnerId && guser.GetRoles().Max(x => x.Position) <= roleToEdit.Position)
                     return;
                 try
                 {
-                    if (roleToEdit.Position > (await Context.Guild.GetCurrentUserAsync().ConfigureAwait(false)).GetRoles().Max(r => r.Position))
+                    if (roleToEdit.Position > (await ctx.Guild.GetCurrentUserAsync().ConfigureAwait(false)).GetRoles().Max(r => r.Position))
                     {
-                        await ReplyErrorLocalized("renrole_perms").ConfigureAwait(false);
+                        await ReplyErrorLocalizedAsync("renrole_perms").ConfigureAwait(false);
                         return;
                     }
                     await roleToEdit.ModifyAsync(g => g.Name = newname).ConfigureAwait(false);
-                    await ReplyConfirmLocalized("renrole").ConfigureAwait(false);
+                    await ReplyConfirmLocalizedAsync("renrole").ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
-                    await ReplyErrorLocalized("renrole_err").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("renrole_err").ConfigureAwait(false);
                 }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
-            public async Task RemoveAllRoles([Remainder] IGuildUser user)
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
+            public async Task RemoveAllRoles([Leftover] IGuildUser user)
             {
-                var guser = (IGuildUser)Context.User;
+                var guser = (IGuildUser)ctx.User;
 
                 var userRoles = user.GetRoles().Except(new[] { guser.Guild.EveryoneRole });
-                if (user.Id == Context.Guild.OwnerId || (Context.User.Id != Context.Guild.OwnerId && guser.GetRoles().Max(x => x.Position) <= userRoles.Max(x => x.Position)))
+                if (user.Id == ctx.Guild.OwnerId || (ctx.User.Id != ctx.Guild.OwnerId && guser.GetRoles().Max(x => x.Position) <= userRoles.Max(x => x.Position)))
                     return;
                 try
                 {
                     await user.RemoveRolesAsync(userRoles).ConfigureAwait(false);
-                    await ReplyConfirmLocalized("rar", Format.Bold(user.ToString())).ConfigureAwait(false);
+                    await ReplyConfirmLocalizedAsync("rar", Format.Bold(user.ToString())).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
-                    await ReplyErrorLocalized("rar_err").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("rar_err").ConfigureAwait(false);
                 }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
-            public async Task CreateRole([Remainder] string roleName = null)
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
+            public async Task CreateRole([Leftover] string roleName = null)
             {
                 if (string.IsNullOrWhiteSpace(roleName))
                     return;
 
-                var r = await Context.Guild.CreateRoleAsync(roleName).ConfigureAwait(false);
-                await ReplyConfirmLocalized("cr", Format.Bold(r.Name)).ConfigureAwait(false);
+                var r = await ctx.Guild.CreateRoleAsync(roleName, isMentionable: false).ConfigureAwait(false);
+                await ReplyConfirmLocalizedAsync("cr", Format.Bold(r.Name)).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
-            public async Task DeleteRole([Remainder] IRole role)
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
+            public async Task DeleteRole([Leftover] IRole role)
             {
-                var guser = (IGuildUser)Context.User;
-                if (Context.User.Id != guser.Guild.OwnerId 
+                var guser = (IGuildUser)ctx.User;
+                if (ctx.User.Id != guser.Guild.OwnerId
                     && guser.GetRoles().Max(x => x.Position) <= role.Position)
                     return;
 
                 await role.DeleteAsync().ConfigureAwait(false);
-                await ReplyConfirmLocalized("dr", Format.Bold(role.Name)).ConfigureAwait(false);
+                await ReplyConfirmLocalizedAsync("dr", Format.Bold(role.Name)).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
             public async Task RoleHoist(IRole role)
             {
-                await role.ModifyAsync(r => r.Hoist = !role.IsHoisted).ConfigureAwait(false);
-                await ReplyConfirmLocalized("rh", Format.Bold(role.Name), Format.Bold(role.IsHoisted.ToString())).ConfigureAwait(false);
+                var newHoisted = !role.IsHoisted;
+                await role.ModifyAsync(r => r.Hoist = newHoisted).ConfigureAwait(false);
+                if (newHoisted)
+                {
+                    await ReplyConfirmLocalizedAsync("rolehoist_enabled", Format.Bold(role.Name)).ConfigureAwait(false);
+                }
+                else
+                {
+                    await ReplyConfirmLocalizedAsync("rolehoist_disabled", Format.Bold(role.Name)).ConfigureAwait(false);
+                }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             [Priority(1)]
-            public async Task RoleColor([Remainder] IRole role)
+            public async Task RoleColor([Leftover] IRole role)
             {
-                await Context.Channel.SendConfirmAsync("Role Color", role.Color.RawValue.ToString("X")).ConfigureAwait(false);
+                await ctx.Channel.SendConfirmAsync("Role Color", role.Color.RawValue.ToString("x6")).ConfigureAwait(false);
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.ManageRoles)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
+            [UserPerm(GuildPerm.ManageRoles)]
+            [BotPerm(GuildPerm.ManageRoles)]
             [Priority(0)]
-            public async Task RoleColor(IRole role, Rgba32 color)
+            public async Task RoleColor(IRole role, SixLabors.ImageSharp.Color color)
             {
                 try
                 {
-                    await role.ModifyAsync(r => r.Color = new Color(color.R, color.G, color.B)).ConfigureAwait(false);
-                    await ReplyConfirmLocalized("rc", Format.Bold(role.Name)).ConfigureAwait(false);
+                    var rgba32 = color.ToPixel<Rgba32>();
+                    await role.ModifyAsync(r => r.Color = new Color(rgba32.R, rgba32.G, rgba32.B)).ConfigureAwait(false);
+                    await ReplyConfirmLocalizedAsync("rc", Format.Bold(role.Name)).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
-                    await ReplyErrorLocalized("rc_perms").ConfigureAwait(false);
+                    await ReplyErrorLocalizedAsync("rc_perms").ConfigureAwait(false);
                 }
             }
 
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
-            [RequireUserPermission(GuildPermission.MentionEveryone)]
-            [RequireBotPermission(GuildPermission.ManageRoles)]
-            public async Task MentionRole([Remainder] IRole role)
+            [UserPerm(GuildPerm.MentionEveryone)]
+            [BotPerm(GuildPerm.ManageRoles)]
+            public async Task MentionRole([Leftover] IRole role)
             {
-                if(!role.IsMentionable)
+                if (!role.IsMentionable)
                 {
                     await role.ModifyAsync(x => x.Mentionable = true).ConfigureAwait(false);
-                    await Context.Channel.SendMessageAsync(role.Mention).ConfigureAwait(false);
+                    await ctx.Channel.SendMessageAsync(role.Mention).ConfigureAwait(false);
                     await role.ModifyAsync(x => x.Mentionable = false).ConfigureAwait(false);
                 }
                 else
                 {
-                    await Context.Channel.SendMessageAsync(role.Mention).ConfigureAwait(false);
+                    await ctx.Channel.SendMessageAsync(role.Mention).ConfigureAwait(false);
                 }
             }
         }

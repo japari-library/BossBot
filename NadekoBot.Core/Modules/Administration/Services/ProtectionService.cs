@@ -27,7 +27,6 @@ namespace NadekoBot.Modules.Administration.Services
         private readonly DiscordSocketClient _client;
         private readonly MuteService _mute;
         private readonly DbService _db;
-        private readonly NadekoBot _bot;
 
         public ProtectionService(DiscordSocketClient client, NadekoBot bot, MuteService mute, DbService db)
         {
@@ -35,14 +34,28 @@ namespace NadekoBot.Modules.Administration.Services
             _client = client;
             _mute = mute;
             _db = db;
-            _bot = bot;
 
-            Initialize();
+            var ids = client.GetGuildIds();
+            using (var uow = db.GetDbContext())
+            {
+                var configs = uow._context.Set<GuildConfig>()
+                    .AsQueryable()
+                    .Include(x => x.AntiRaidSetting)
+                    .Include(x => x.AntiSpamSetting)
+                    .ThenInclude(x => x.IgnoredChannels)
+                    .Where(x => ids.Contains(x.GuildId))
+                    .ToList();
+
+                foreach (var gc in configs)
+                {
+                    Initialize(gc);
+                }
+            }
 
             _client.MessageReceived += HandleAntiSpam;
             _client.UserJoined += HandleAntiRaid;
 
-            _bot.JoinedGuild += _bot_JoinedGuild;
+            bot.JoinedGuild += _bot_JoinedGuild;
             _client.LeftGuild += _client_LeftGuild;
         }
 
@@ -58,16 +71,17 @@ namespace NadekoBot.Modules.Administration.Services
 
         private Task _bot_JoinedGuild(GuildConfig gc)
         {
-            var _ = Task.Run(() => Initialize(gc));
-            return Task.CompletedTask;
-        }
-
-        private void Initialize()
-        {
-            foreach (var gc in _bot.AllGuildConfigs)
+            using (var uow = _db.GetDbContext())
             {
-                Initialize(gc);
+                var gcWithData = uow.GuildConfigs.ForId(gc.GuildId,
+                    x => x
+                        .Include(x => x.AntiRaidSetting)
+                        .Include(x => x.AntiSpamSetting)
+                        .ThenInclude(x => x.IgnoredChannels));
+
+                Initialize(gcWithData);
             }
+            return Task.CompletedTask;
         }
 
         private void Initialize(GuildConfig gc)
@@ -173,10 +187,11 @@ namespace NadekoBot.Modules.Administration.Services
                     case PunishmentAction.Mute:
                         try
                         {
+                            var muteReason = $"{pt} Protection";
                             if (muteTime <= 0)
-                                await _mute.MuteUser(gu, _client.CurrentUser).ConfigureAwait(false);
+                                await _mute.MuteUser(gu, _client.CurrentUser, reason: muteReason).ConfigureAwait(false);
                             else
-                                await _mute.TimedMute(gu, _client.CurrentUser, TimeSpan.FromSeconds(muteTime)).ConfigureAwait(false);
+                                await _mute.TimedMute(gu, _client.CurrentUser, TimeSpan.FromSeconds(muteTime), reason: muteReason).ConfigureAwait(false);
                         }
                         catch (Exception ex) { _log.Warn(ex, "I can't apply punishement"); }
                         break;
@@ -198,7 +213,7 @@ namespace NadekoBot.Modules.Administration.Services
                             catch
                             {
                                 await gu.Guild.RemoveBanAsync(gu).ConfigureAwait(false);
-                                // try it twice, really don't want to ban user if 
+                                // try it twice, really don't want to ban user if
                                 // only kick has been specified as the punishement
                             }
                         }
@@ -237,12 +252,12 @@ namespace NadekoBot.Modules.Administration.Services
 
             _antiRaidGuilds.AddOrUpdate(guildId, stats, (key, old) => stats);
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var gc = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.AntiRaidSetting));
 
                 gc.AntiRaidSetting = stats.AntiRaidSettings;
-                await uow.CompleteAsync();
+                await uow.SaveChangesAsync();
             }
 
             return stats;
@@ -252,12 +267,12 @@ namespace NadekoBot.Modules.Administration.Services
         {
             if (_antiRaidGuilds.TryRemove(guildId, out _))
             {
-                using (var uow = _db.UnitOfWork)
+                using (var uow = _db.GetDbContext())
                 {
                     var gc = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.AntiRaidSetting));
 
                     gc.AntiRaidSetting = null;
-                    uow.Complete();
+                    uow.SaveChanges();
                 }
                 return true;
             }
@@ -269,13 +284,13 @@ namespace NadekoBot.Modules.Administration.Services
             if (_antiSpamGuilds.TryRemove(guildId, out var removed))
             {
                 removed.UserStats.ForEach(x => x.Value.Dispose());
-                using (var uow = _db.UnitOfWork)
+                using (var uow = _db.GetDbContext())
                 {
                     var gc = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.AntiSpamSetting)
                         .ThenInclude(x => x.IgnoredChannels));
 
                     gc.AntiSpamSetting = null;
-                    uow.Complete();
+                    uow.SaveChanges();
                 }
                 return true;
             }
@@ -303,7 +318,7 @@ namespace NadekoBot.Modules.Administration.Services
                 return stats;
             });
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var gc = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.AntiSpamSetting));
 
@@ -317,44 +332,45 @@ namespace NadekoBot.Modules.Administration.Services
                 {
                     gc.AntiSpamSetting = stats.AntiSpamSettings;
                 }
-                await uow.CompleteAsync();
+                await uow.SaveChangesAsync();
             }
             return stats;
         }
 
-        public async Task<bool> AntiSpamIgnoreAsync(ulong guildId, ulong channelId)
+        public async Task<bool?> AntiSpamIgnoreAsync(ulong guildId, ulong channelId)
         {
             var obj = new AntiSpamIgnore()
             {
                 ChannelId = channelId
             };
             bool added;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var gc = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.AntiSpamSetting).ThenInclude(x => x.IgnoredChannels));
                 var spam = gc.AntiSpamSetting;
-                if (spam == null)
+                if (spam is null)
                 {
-                    return false;
+                    return null;
                 }
 
-                if (spam.IgnoredChannels.Add(obj))
+                if (spam.IgnoredChannels.Add(obj)) // if adding to db is successful
                 {
                     if (_antiSpamGuilds.TryGetValue(guildId, out var temp))
-                        temp.AntiSpamSettings.IgnoredChannels.Add(obj);
+                        temp.AntiSpamSettings.IgnoredChannels.Add(obj); // add to local cache
                     added = true;
                 }
                 else
                 {
-                    spam.IgnoredChannels.Remove(obj);
+                    var toRemove = spam.IgnoredChannels.First(x => x.ChannelId == channelId);
+                    uow._context.Set<AntiSpamIgnore>().Remove(toRemove); // remove from db
                     if (_antiSpamGuilds.TryGetValue(guildId, out var temp))
                     {
-                        uow._context.Set<AntiSpamIgnore>().Remove(obj);
+                        temp.AntiSpamSettings.IgnoredChannels.Remove(toRemove); // remove from local cache
                     }
                     added = false;
                 }
 
-                await uow.CompleteAsync();
+                await uow.SaveChangesAsync();
             }
             return added;
         }

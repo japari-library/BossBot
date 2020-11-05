@@ -10,6 +10,7 @@ using NadekoBot.Modules.Music.Services;
 using Discord;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using NadekoBot.Common;
 
 namespace NadekoBot.Modules.Administration.Services
 {
@@ -19,6 +20,7 @@ namespace NadekoBot.Modules.Administration.Services
         private readonly DiscordSocketClient _client;
         private readonly Logger _log;
         private readonly IDataCache _cache;
+        private readonly SelfService _selfService;
         private readonly Replacer _rep;
         private readonly DbService _db;
         private readonly IBotConfigProvider _bcp;
@@ -31,13 +33,14 @@ namespace NadekoBot.Modules.Administration.Services
         }
 
         public PlayingRotateService(DiscordSocketClient client, IBotConfigProvider bcp,
-            DbService db, IDataCache cache, NadekoBot bot, MusicService music)
+            DbService db, IDataCache cache, NadekoBot bot, MusicService music, SelfService selfService)
         {
             _client = client;
             _bcp = bcp;
             _db = db;
             _log = LogManager.GetCurrentClassLogger();
             _cache = cache;
+            _selfService = selfService;
 
             if (client.ShardId == 0)
             {
@@ -51,11 +54,11 @@ namespace NadekoBot.Modules.Administration.Services
                 {
                     try
                     {
-                        // bcp.Reload();
-
                         var state = (TimerState)objState;
+                        
                         if (!BotConfig.RotatingStatuses)
                             return;
+                        
                         if (state.Index >= BotConfig.RotatingStatusMessages.Count)
                             state.Index = 0;
 
@@ -91,7 +94,7 @@ namespace NadekoBot.Modules.Administration.Services
                 throw new ArgumentOutOfRangeException(nameof(index));
 
             string msg;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var config = uow.BotConfig.GetOrCreate(set => set.Include(x => x.RotatingStatusMessages));
 
@@ -101,7 +104,7 @@ namespace NadekoBot.Modules.Administration.Services
                 var remove = config.RotatingStatusMessages[index];
                 uow._context.Remove(remove);
                 _bcp.BotConfig.RotatingStatusMessages = config.RotatingStatusMessages;
-                await uow.CompleteAsync();
+                await uow.SaveChangesAsync();
             }
 
             return msg;
@@ -109,26 +112,27 @@ namespace NadekoBot.Modules.Administration.Services
 
         public async Task AddPlaying(ActivityType t, string status)
         {
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var config = uow.BotConfig.GetOrCreate(set => set.Include(x => x.RotatingStatusMessages));
                 var toAdd = new PlayingStatus { Status = status, Type = t };
                 config.RotatingStatusMessages.Add(toAdd);
                 _bcp.BotConfig.RotatingStatusMessages = config.RotatingStatusMessages;
-                await uow.CompleteAsync();
+                await uow.SaveChangesAsync();
             }
         }
 
         public bool ToggleRotatePlaying()
         {
             bool enabled;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var config = uow.BotConfig.GetOrCreate(set => set);
 
                 enabled = config.RotatingStatuses = !config.RotatingStatuses;
-                uow.Complete();
+                uow.SaveChanges();
             }
+            _selfService.ReloadBotConfig();
             return enabled;
         }
     }

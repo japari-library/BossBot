@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +15,7 @@ DELETE FROM WaifuInfo;";
 DELETE FROM WaifuItem WHERE WaifuInfoId=(SELECT Id FROM WaifuInfo WHERE WaifuId=(SELECT Id FROM DiscordUser WHERE UserId={0}));
 UPDATE WaifuInfo SET ClaimerId=NULL WHERE ClaimerId=(SELECT Id FROM DiscordUser WHERE UserId={0});
 DELETE FROM WaifuInfo WHERE WaifuId=(SELECT Id FROM DiscordUser WHERE UserId={0});";
-        public const string CurrencyDeleteSql = "UPDATE DiscordUser SET CurrencyAmount=0; DELETE FROM CurrencyTransactions;";
+        public const string CurrencyDeleteSql = "UPDATE DiscordUser SET CurrencyAmount=0; DELETE FROM CurrencyTransactions; DELETE FROM PlantedCurrency;";
         public const string MusicPlaylistDeleteSql = "DELETE FROM MusicPlaylists;";
         public const string XpDeleteSql = @"DELETE FROM UserXpStats;
 UPDATE DiscordUser
@@ -25,11 +25,11 @@ SET ClubId=NULL,
 DELETE FROM ClubApplicants;
 DELETE FROM ClubBans;
 DELETE FROM Clubs;";
-        public const string DeleteUnusedCustomReactionsAndQuotes = @"DELETE FROM CustomReactions 
-WHERE UseCount=0 AND (DateAdded < date('now', '-7 day') OR DateAdded is null);
+//        public const string DeleteUnusedCustomReactionsAndQuotes = @"DELETE FROM CustomReactions 
+//WHERE UseCount=0 AND (DateAdded < date('now', '-7 day') OR DateAdded is null);
 
-DELETE FROM Quotes 
-WHERE UseCount=0 AND (DateAdded < date('now', '-7 day') OR DateAdded is null);";
+//DELETE FROM Quotes 
+//WHERE UseCount=0 AND (DateAdded < date('now', '-7 day') OR DateAdded is null);";
 
         private readonly DbService _db;
 
@@ -41,9 +41,9 @@ WHERE UseCount=0 AND (DateAdded < date('now', '-7 day') OR DateAdded is null);";
         public async Task<int> ExecuteSql(string sql)
         {
             int res;
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
-                res = await uow._context.Database.ExecuteSqlCommandAsync(sql);
+                res = await uow._context.Database.ExecuteSqlRawAsync(sql);
             }
             return res;
         }
@@ -62,7 +62,7 @@ WHERE UseCount=0 AND (DateAdded < date('now', '-7 day') OR DateAdded is null);";
                 Results = new List<string[]>(),
             };
 
-            using (var uow = _db.UnitOfWork)
+            using (var uow = _db.GetDbContext())
             {
                 var conn = uow._context.Database.GetDbConnection();
                 using (var cmd = conn.CreateCommand())

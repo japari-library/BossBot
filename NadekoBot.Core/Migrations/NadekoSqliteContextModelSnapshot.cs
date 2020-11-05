@@ -189,6 +189,10 @@ namespace NadekoBot.Migrations
 
                     b.Property<int>("MaxBet");
 
+                    b.Property<int>("MaxXpMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(720);
+
                     b.Property<int>("MigrationVersion");
 
                     b.Property<int>("MinBet");
@@ -220,6 +224,10 @@ namespace NadekoBot.Migrations
                     b.Property<int>("TriviaCurrencyReward");
 
                     b.Property<string>("UpdateString");
+
+                    b.Property<double>("VoiceXpPerMinute")
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValue(0);
 
                     b.Property<int>("WaifuGiftMultiplier")
                         .ValueGeneratedOnAdd()
@@ -375,6 +383,8 @@ namespace NadekoBot.Migrations
                     b.Property<bool>("IsRegex");
 
                     b.Property<bool>("OwnerOnly");
+
+                    b.Property<string>("Reactions");
 
                     b.Property<string>("Response");
 
@@ -552,6 +562,24 @@ namespace NadekoBot.Migrations
                     b.ToTable("FilteredWord");
                 });
 
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.FilterLinksChannelId", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<ulong>("ChannelId");
+
+                    b.Property<DateTime?>("DateAdded");
+
+                    b.Property<int?>("GuildConfigId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildConfigId");
+
+                    b.ToTable("FilterLinksChannelId");
+                });
+
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.FollowedStream", b =>
                 {
                     b.Property<int>("Id")
@@ -656,6 +684,8 @@ namespace NadekoBot.Migrations
 
                     b.Property<bool>("FilterInvites");
 
+                    b.Property<bool>("FilterLinks");
+
                     b.Property<bool>("FilterWords");
 
                     b.Property<ulong?>("GameVoiceChannel");
@@ -692,6 +722,10 @@ namespace NadekoBot.Migrations
 
                     b.Property<bool>("VoicePlusTextEnabled");
 
+                    b.Property<int>("WarnExpireAction");
+
+                    b.Property<int>("WarnExpireHours");
+
                     b.Property<bool>("WarningsInitialized");
 
                     b.HasKey("Id");
@@ -702,6 +736,8 @@ namespace NadekoBot.Migrations
                     b.HasIndex("LogSettingId");
 
                     b.HasIndex("RootPermissionId");
+
+                    b.HasIndex("WarnExpireHours");
 
                     b.ToTable("GuildConfigs");
                 });
@@ -1252,7 +1288,7 @@ namespace NadekoBot.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
+                    b.HasIndex("PatreonUserId")
                         .IsUnique();
 
                     b.ToTable("RewardedUsers");
@@ -1524,6 +1560,28 @@ namespace NadekoBot.Migrations
                     b.ToTable("UnmuteTimer");
                 });
 
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.UnroleTimer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<DateTime?>("DateAdded");
+
+                    b.Property<int?>("GuildConfigId");
+
+                    b.Property<ulong>("RoleId");
+
+                    b.Property<DateTime>("UnbanAt");
+
+                    b.Property<ulong>("UserId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildConfigId");
+
+                    b.ToTable("UnroleTimer");
+                });
+
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.UserXpStats", b =>
                 {
                     b.Property<int>("Id")
@@ -1700,6 +1758,8 @@ namespace NadekoBot.Migrations
                     b.Property<int?>("GuildConfigId");
 
                     b.Property<int>("Punishment");
+
+                    b.Property<ulong?>("RoleId");
 
                     b.Property<int>("Time");
 
@@ -1917,6 +1977,13 @@ namespace NadekoBot.Migrations
                         .HasForeignKey("GuildConfigId");
                 });
 
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.FilterLinksChannelId", b =>
+                {
+                    b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig")
+                        .WithMany("FilterLinksChannelIds")
+                        .HasForeignKey("GuildConfigId");
+                });
+
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.FollowedStream", b =>
                 {
                     b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig")
@@ -2126,6 +2193,13 @@ namespace NadekoBot.Migrations
                 {
                     b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig")
                         .WithMany("UnmuteTimers")
+                        .HasForeignKey("GuildConfigId");
+                });
+
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.UnroleTimer", b =>
+                {
+                    b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig")
+                        .WithMany("UnroleTimer")
                         .HasForeignKey("GuildConfigId");
                 });
 

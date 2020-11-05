@@ -4,8 +4,9 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <OutputType>exe</OutputType>
     <ApplicationIcon>nadeko_icon.ico</ApplicationIcon>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RollForward>Major</RollForward>
     <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
   </PropertyGroup>
 
@@ -14,13 +15,12 @@
     <Version Condition=" '$(VersionSuffix)' != '' ">$(VersionPrefix).$(VersionSuffix)</Version>
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="4.7.2" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="credentials.json" />
-    <PackageReference Include="NLog" Version="4.5.8" />
-    <None Update="credentials_example.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="data\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -42,11 +42,14 @@
     <None Update="nadeko_icon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="credentials_example.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'GlobalNadeko' ">
     <DefineConstants>$(DefineConstants);GLOBAL_NADEKO</DefineConstants>
-    <NoWarn>$(NoWarn);CS1573;CS1591</NoWarn>
+    <NoWarn>$(NoWarn);CS1573;CS1591;CS8032</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\NadekoBot.Core\NadekoBot.Core.csproj" />

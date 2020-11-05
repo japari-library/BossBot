@@ -2,14 +2,15 @@
   "Administration": [
     {
       "Aliases": [
-        ".delmsgoncmd"
+        ".delmsgoncmd",
+        ".dmc"
       ],
       "Description": "Toggles the automatic deletion of the user's successful command message to prevent chat flood. You can use it either as a server toggle, channel whitelist, or channel blacklist, as channel option has 3 settings: Enable (always do it on this channel), Disable (never do it on this channel), and Inherit (respect server setting). Use `list` parameter to see the current states.",
       "Usage": [
-        ".delmsgoncmd",
-        ".delmsgoncmd channel enable",
-        ".delmsgoncmd channel inherit",
-        ".delmsgoncmd list"
+        ".dmc",
+        ".dmc channel enable",
+        ".dmc ch inherit",
+        ".dmc list"
       ],
       "Submodule": "Administration",
       "Module": "Administration",
@@ -287,21 +288,6 @@
     },
     {
       "Aliases": [
-        ".deleteunusedcrnq"
-      ],
-      "Description": "Deletes all quotes and custom reactions which are older than a week and haven't been used a single time.",
-      "Usage": [
-        ".deleteunusedcrnq"
-      ],
-      "Submodule": "DangerousCommands",
-      "Module": "Administration",
-      "Options": null,
-      "Requirements": [
-        "Bot Owner Only"
-      ]
-    },
-    {
-      "Aliases": [
         ".gvc"
       ],
       "Description": "Toggles game voice channel feature in the voice channel you're currently in. Users who join the game voice channel will get automatically redirected to the voice channel with the name of their current game, if it exists. Can't move users to channels that the bot has no connect permission for. One per server.",
@@ -554,7 +540,7 @@
         ".addplaying",
         ".adpl"
       ],
-      "Description": "Adds a specified string to the list of playing strings to rotate. You have to pick either 'Playing', 'Watching' or 'Listening' as the first parameter. Supported placeholders: `%servers%`, `%users%`, `%playing%`, `%queued%`, `%time%`, `%shardid%`, `%shardcount%`, `%shardguilds%`.",
+      "Description": "Adds a specified string to the list of playing strings to rotate. You have to pick either 'Playing', 'Watching' or 'Listening' as the first parameter.",
       "Usage": [
         ".adpl Playing with you",
         ".adpl Watching you sleep"
@@ -694,12 +680,16 @@
         ".prune",
         ".clear"
       ],
-      "Description": "`.prune` removes all Nadeko's messages in the last 100 messages. `.prune X` removes last `X` number of messages from the channel (up to 100). `.prune @Someone` removes all Someone's messages in the last 100 messages. `.prune @Someone X` removes last `X` number of 'Someone's' messages in the channel.",
+      "Description": "`.prune` removes all Nadeko's messages in the last 100 messages. `.prune X` removes last `X` number of messages from the channel (up to 100). `.prune @Someone` removes all Someone's messages in the last 100 messages. `.prune @Someone X` removes last `X` number of 'Someone's' messages in the channel. You can use the `-s` / `--safe` parameter at the end to only prune messages that are not pinned.",
       "Usage": [
         ".prune",
+        ".prune -s",
         ".prune 5",
+        ".prune 5 --safe",
         ".prune @Someone",
-        ".prune @Someone X"
+        ".prune @Someone --safe",
+        ".prune @Someone X",
+        ".prune @Someone X -s"
       ],
       "Submodule": "PruneCommands",
       "Module": "Administration",
@@ -758,9 +748,10 @@
     {
       "Aliases": [
         ".setrole",
-        ".sr"
+        ".sr",
+        ".giverole"
       ],
-      "Description": "Sets a role for a given user.",
+      "Description": "Gives a role to a user. The role you specify has to be lower in the role hierarchy than your highest role.",
       "Usage": [
         ".sr @User Guest"
       ],
@@ -776,7 +767,7 @@
         ".removerole",
         ".rr"
       ],
-      "Description": "Removes a role from a given user.",
+      "Description": "Removes a role from a user. The role you specify has to be lower in the role hierarchy than your highest role.",
       "Usage": [
         ".rr @User Admin"
       ],
@@ -792,7 +783,7 @@
         ".renamerole",
         ".renr"
       ],
-      "Description": "Renames a role. The role you are renaming must be lower than bot's highest role.",
+      "Description": "Renames a role. The role you specify has to be lower in the role hierarchy than your highest role.",
       "Usage": [
         ".renr \"First role\" SecondRole"
       ],
@@ -808,7 +799,7 @@
         ".removeallroles",
         ".rar"
       ],
-      "Description": "Removes all roles from a mentioned user.",
+      "Description": "Removes all roles which are lower than your highest role in the role hierarchy from the user you specify.",
       "Usage": [
         ".rar @User"
       ],
@@ -856,7 +847,7 @@
         ".rolehoist",
         ".rh"
       ],
-      "Description": "Toggles whether this role is displayed in the sidebar or not.",
+      "Description": "Toggles whether this role is displayed in the sidebar or not. The role you specify has to be lower in the role hierarchy than your highest role.",
       "Usage": [
         ".rh Guests",
         ".rh \"Space Wizards\""
@@ -873,7 +864,7 @@
         ".rolecolor",
         ".roleclr"
       ],
-      "Description": "Set a role's color using its hex value. Provide no color in order to see the hex value of the color of the specified role.",
+      "Description": "Set a role's color using its hex value. Provide no color in order to see the hex value of the color of the specified role. The role you specify has to be lower in the role hierarchy than your highest role.",
       "Usage": [
         ".roleclr Admin",
         ".roleclr Admin ffba55"
@@ -1063,6 +1054,7 @@
       "Module": "Administration",
       "Options": null,
       "Requirements": [
+        "Administrator Server Permission",
         "Bot Owner Only"
       ]
     },
@@ -1078,6 +1070,7 @@
       "Module": "Administration",
       "Options": null,
       "Requirements": [
+        "Administrator Server Permission",
         "Bot Owner Only"
       ]
     },
@@ -1142,6 +1135,7 @@
       "Module": "Administration",
       "Options": null,
       "Requirements": [
+        "Administrator Server Permission",
         "Bot Owner Only"
       ]
     },
@@ -1157,6 +1151,7 @@
       "Module": "Administration",
       "Options": null,
       "Requirements": [
+        "Administrator Server Permission",
         "Bot Owner Only"
       ]
     },
@@ -1441,9 +1436,9 @@
       "Aliases": [
         ".greetmsg"
       ],
-      "Description": "Sets a new join announcement message which will be shown in the server's channel. Type `%user%` if you want to mention the new member. Using it with no message will show the current greet message. You can use embed json from <https://embedbuilder.nadekobot.me/> instead of a regular text, if you want the message to be embedded.",
+      "Description": "Sets a new join announcement message which will be shown in the server's channel. Type `%user.mention%` if you want to mention the new member. Using it with no message will show the current greet message. You can use embed json from <https://eb.nadeko.bot/> instead of a regular text, if you want the message to be embedded.",
       "Usage": [
-        ".greetmsg Welcome, %user%."
+        ".greetmsg Welcome, %user.mention%."
       ],
       "Submodule": "ServerGreetCommands",
       "Module": "Administration",
@@ -1471,9 +1466,9 @@
       "Aliases": [
         ".greetdmmsg"
       ],
-      "Description": "Sets a new join announcement message which will be sent to the user who joined. Type `%user%` if you want to mention the new member. Using it with no message will show the current DM greet message. You can use embed json from <https://embedbuilder.nadekobot.me> instead of a regular text, if you want the message to be embedded.",
+      "Description": "Sets a new join announcement message which will be sent to the user who joined. Type `%user.mention%` if you want to mention the new member. Using it with no message will show the current DM greet message. You can use embed json from <https://eb.nadeko.bot> instead of a regular text, if you want the message to be embedded.",
       "Usage": [
-        ".greetdmmsg Welcome to the server, %user%"
+        ".greetdmmsg Welcome to the server, %user.mention%"
       ],
       "Submodule": "ServerGreetCommands",
       "Module": "Administration",
@@ -1501,9 +1496,9 @@
       "Aliases": [
         ".byemsg"
       ],
-      "Description": "Sets a new leave announcement message. Type `%user%` if you want to show the name the user who left. Type `%id%` to show id. Using this command with no message will show the current bye message. You can use embed json from <https://embedbuilder.nadekobot.me/> instead of a regular text, if you want the message to be embedded.",
+      "Description": "Sets a new leave announcement message. Type `%user.mention%` if you want to show the name the user who left. Type `%id%` to show id. Using this command with no message will show the current bye message. You can use embed json from <https://eb.nadeko.bot/> instead of a regular text, if you want the message to be embedded.",
       "Usage": [
-        ".byemsg %user% has left."
+        ".byemsg %user.mention% has left."
       ],
       "Submodule": "ServerGreetCommands",
       "Module": "Administration",
@@ -1526,38 +1521,6 @@
       "Options": null,
       "Requirements": [
         "ManageServer Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
-        ".slowmode"
-      ],
-      "Description": "Toggles slowmode. Slowmode deletes any excess messages users type over the specified limit of messages per X seconds. To enable, specify a number of messages (-m) each user can send, and an interval in seconds (-s).  Disable by specifying no parameters.",
-      "Usage": [
-        ".slowmode -m 1 -s 5",
-        ".slowmode"
-      ],
-      "Submodule": "SlowmodeCommands",
-      "Module": "Administration",
-      "Options": "`--message-count` (`-m`)   Number of messages user can send.  \n`--seconds` (`-s`)   Interval in which the user can send the specified number of messages.  ",
-      "Requirements": [
-        "ManageMessages Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
-        ".slowmodewl"
-      ],
-      "Description": "Ignores a role or a user from the slowmode feature.",
-      "Usage": [
-        ".slowmodewl SomeRole",
-        ".slowmodewl AdminDude"
-      ],
-      "Submodule": "SlowmodeCommands",
-      "Module": "Administration",
-      "Options": null,
-      "Requirements": [
-        "ManageMessages Server Permission"
       ]
     },
     {
@@ -1600,6 +1563,25 @@
       "Options": null,
       "Requirements": [
         "BanMembers Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
+        ".warnexpire",
+        ".warne"
+      ],
+      "Description": "Sets the number of days after which the warnings will be cleared automatically. This setting works retroactively. If you want to delete the warnings instead of clearing them, you can set the `--delete` optional parameter.",
+      "Usage": [
+        ".warne 3",
+        ".warne 6 --delete"
+      ],
+      "Submodule": "UserPunishCommands",
+      "Module": "Administration",
+      "Options": [
+        "`--delete` (`-d`)   Delete warnings instead of clearing them.  "
+      ],
+      "Requirements": [
+        "Administrator Server Permission"
       ]
     },
     {
@@ -1655,11 +1637,12 @@
         ".warnpunish",
         ".warnp"
       ],
-      "Description": "Sets a punishment for a certain number of warnings. You can specify a time string after 'Ban' or 'Mute' punishment to make it a temporary mute/ban. Provide no punishment to remove.",
+      "Description": "Sets a punishment for a certain number of warnings. You can specify a time string after 'Ban' or *'Mute' punishments to make it a temporary mute/ban. Provide no punishment to remove. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, AddRole, RemoveRoles",
       "Usage": [
-        ".warnp 5 Ban",
         ".warnp 3",
-        ".warnp 5 Mute 2d12h"
+        ".warnp 5 Ban",
+        ".warnp 5 Mute 2d12h",
+        ".warnp 4 AddRole toxic 1h"
       ],
       "Submodule": "UserPunishCommands",
       "Module": "Administration",
@@ -1766,6 +1749,21 @@
     },
     {
       "Aliases": [
+        ".vcrolerm"
+      ],
+      "Description": "Removes vcrole associated with the specified voice channel ID. This is useful if your vcrole has been enabled on a VC which has been deleted.",
+      "Usage": [
+        ".vcrolerm 123123123123123"
+      ],
+      "Submodule": "VcRoleCommands",
+      "Module": "Administration",
+      "Options": null,
+      "Requirements": [
+        "ManageRoles Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
         ".vcrole"
       ],
       "Description": "Sets or resets a role which will be given to users who join the voice channel you're in when you run this command. Provide no role name to disable. You must be in a voice channel to run this command.",
@@ -1800,9 +1798,9 @@
         ".addcustreact",
         ".acr"
       ],
-      "Description": "Add a custom reaction with a trigger and a response. Running this command in server requires the Administration permission. Running this command in DM is Bot Owner only and adds a new global custom reaction. Guide here: <http://nadekobot.readthedocs.io/en/latest/Custom%20Reactions/>",
+      "Description": "Add a custom reaction with a trigger and a response. Running this command in server requires the Administration permission. Running this command in DM is Bot Owner only and adds a new global custom reaction. Guide here: <http://nadekobot.readthedocs.io/en/latest/custom-reactions/>",
       "Usage": [
-        ".acr \"hello\" Hi there %user%"
+        ".acr \"hello\" Hi there %user.mention%"
       ],
       "Submodule": "CustomReactions",
       "Module": "CustomReactions",
@@ -1874,6 +1872,22 @@
       "Description": "Deletes a custom reaction on a specific index. If ran in DM, it is bot owner only and deletes a global custom reaction. If ran in a server, it requires Administration privileges and removes server custom reaction.",
       "Usage": [
         ".dcr 5"
+      ],
+      "Submodule": "CustomReactions",
+      "Module": "CustomReactions",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".crreact",
+        ".crr"
+      ],
+      "Description": "Sets or resets reactions (up to 3) which will be added to the response message of the CustomReaction with the specified ID. Provide no emojis to reset.",
+      "Usage": [
+        ".crr 59 👍 👎 ",
+        ".crr 59 <a:nFlower:408963839191941120>",
+        ".crr 59"
       ],
       "Submodule": "CustomReactions",
       "Module": "CustomReactions",
@@ -2153,7 +2167,9 @@
       ],
       "Submodule": "Gambling",
       "Module": "Gambling",
-      "Options": null,
+      "Options": [
+        "`--clean` (`-c`)   Only show users who are on the server.  "
+      ],
       "Requirements": []
     },
     {
@@ -2180,7 +2196,9 @@
       ],
       "Submodule": "AnimalRacingCommands",
       "Module": "Gambling",
-      "Options": "`--start-time` (`-s`)     ",
+      "Options": [
+        "`--start-time` (`-s`)     "
+      ],
       "Requirements": []
     },
     {
@@ -2262,7 +2280,10 @@
       ],
       "Submodule": "Connect4Commands",
       "Module": "Gambling",
-      "Options": "`--turn-timer` (`-t`)   Turn time in seconds. It has to be between 5 and 60. Default 15.  \n`--bet` (`-b`)   Amount you bet. Default 0.  ",
+      "Options": [
+        "`--turn-timer` (`-t`)   Turn time in seconds. It has to be between 5 and 60. Default 15.  ",
+        "`--bet` (`-b`)   Amount you bet. Default 0.  "
+      ],
       "Requirements": []
     },
     {
@@ -2276,7 +2297,11 @@
       ],
       "Submodule": "CurrencyEventsCommands",
       "Module": "Gambling",
-      "Options": "`--amount` (`-a`)   Amount of currency each user receives.  \n`--pot-size` (`-p`)   The maximum amount of currency that can be rewarded. 0 means no limit.  \n`--duration` (`-d`)   Number of hours the event should run for. Default 24.  ",
+      "Options": [
+        "`--amount` (`-a`)   Amount of currency each user receives.  ",
+        "`--pot-size` (`-p`)   The maximum amount of currency that can be rewarded. 0 means no limit.  ",
+        "`--duration` (`-d`)   Number of hours the event should run for. Default 24.  "
+      ],
       "Requirements": [
         "Bot Owner Only"
       ]
@@ -2516,9 +2541,10 @@
     },
     {
       "Aliases": [
-        ".slot"
+        ".slot",
+        ".slots"
       ],
-      "Description": "Play Nadeko slots. Max bet is 9999. 1.5 second cooldown per user.",
+      "Description": "Play Nadeko slots. 1 second cooldown per user.",
       "Usage": [
         ".slot 5"
       ],
@@ -2653,19 +2679,6 @@
       "Module": "Gambling",
       "Options": null,
       "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".wheeltest"
-      ],
-      "Description": "wheeltest",
-      "Usage": [
-        "wheeltest"
-      ],
-      "Submodule": "WheelOfFortuneCommands",
-      "Module": "Gambling",
-      "Options": null,
-      "Requirements": []
     }
   ],
   "Games": [
@@ -2733,7 +2746,10 @@
       ],
       "Submodule": "AcropobiaCommands",
       "Module": "Games",
-      "Options": "`--submission-time` (`-s`)   Time after which the submissions are closed and voting starts.  \n`--vote-time` (`-v`)   Time after which the voting is closed and the winner is declared.  ",
+      "Options": [
+        "`--submission-time` (`-s`)   Time after which the submissions are closed and voting starts.  ",
+        "`--vote-time` (`-v`)   Time after which the voting is closed and the winner is declared.  "
+      ],
       "Requirements": []
     },
     {
@@ -2787,19 +2803,6 @@
         ".hangmanstop"
       ],
       "Submodule": "HangmanCommands",
-      "Module": "Games",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".leet"
-      ],
-      "Description": "Converts a text to leetspeak with 6 (1-6) severity levels",
-      "Usage": [
-        ".leet 3 Hello"
-      ],
-      "Submodule": "LeetCommands",
       "Module": "Games",
       "Options": null,
       "Requirements": []
@@ -2934,7 +2937,9 @@
       ],
       "Submodule": "SpeedTypingCommands",
       "Module": "Games",
-      "Options": "`--start-time` (`-s`)   How long does it take for the race to start. Default 5.  ",
+      "Options": [
+        "`--start-time` (`-s`)   How long does it take for the race to start. Default 5.  "
+      ],
       "Requirements": []
     },
     {
@@ -3005,7 +3010,9 @@
       ],
       "Submodule": "TicTacToeCommands",
       "Module": "Games",
-      "Options": "`--turn-timer` (`-t`)   Turn time in seconds. Default 15.  ",
+      "Options": [
+        "`--turn-timer` (`-t`)   Turn time in seconds. Default 15.  "
+      ],
       "Requirements": []
     },
     {
@@ -3020,7 +3027,13 @@
       ],
       "Submodule": "TriviaCommands",
       "Module": "Games",
-      "Options": "`--pokemon` (`-p`)   Whether it's 'Who's that pokemon?' trivia.  \n`--nohint`   Don't show any hints.  \n`--win-req` (`-w`)   Winning requirement. Set 0 for an infinite game. Default 10.  \n`--question-timer` (`-q`)   How long until the question ends. Default 30.  \n`--timeout` (`-t`)   Number of questions of inactivity in order stop. Set 0 for never. Default 10.  ",
+      "Options": [
+        "`--pokemon` (`-p`)   Whether it's 'Who's that pokemon?' trivia.  ",
+        "`--nohint`   Don't show any hints.  ",
+        "`--win-req` (`-w`)   Winning requirement. Set 0 for an infinite game. Default 10.  ",
+        "`--question-timer` (`-q`)   How long until the question ends. Default 30.  ",
+        "`--timeout` (`-t`)   Number of questions of inactivity in order stop. Set 0 for never. Default 10.  "
+      ],
       "Requirements": []
     },
     {
@@ -3077,7 +3090,9 @@
       ],
       "Submodule": "Help",
       "Module": "Help",
-      "Options": "`--view` (`-v`)   Specifies how to output the list of commands. 0 - Hide commands which you can't use, 1 - Cross out commands which you can't use, 2 - Show all.  ",
+      "Options": [
+        "`--view` (`-v`)   Specifies how to output the list of commands. 0 - Hide commands which you can't use, 1 - Cross out commands which you can't use, 2 - Show all.  "
+      ],
       "Requirements": []
     },
     {
@@ -3727,7 +3742,7 @@
       "Aliases": [
         ".hentai"
       ],
-      "Description": "Shows a hentai image from a random website (gelbooru or danbooru or konachan or atfbooru or yandere) with a given tag. Tag is optional but preferred. Only 1 tag allowed.",
+      "Description": "Shows a hentai image from a random website (gelbooru, danbooru, konachan or yandere) with a given tag. Tag is optional but preferred. Only 1 tag allowed.",
       "Usage": [
         ".hentai yuri"
       ],
@@ -3740,7 +3755,7 @@
       "Aliases": [
         ".hentaibomb"
       ],
-      "Description": "Shows a total 5 images (from gelbooru, danbooru, konachan, yandere and atfbooru). Tag is optional but preferred.",
+      "Description": "Shows a total 5 images (from gelbooru, danbooru, konachan and yandere). Tag is optional but preferred.",
       "Usage": [
         ".hentaibomb yuri"
       ],
@@ -3882,7 +3897,9 @@
       "Submodule": "NSFW",
       "Module": "NSFW",
       "Options": null,
-      "Requirements": []
+      "Requirements": [
+        "ManageMessages Server Permission"
+      ]
     },
     {
       "Aliases": [
@@ -3906,8 +3923,9 @@
         ".verbose",
         ".v"
       ],
-      "Description": "Sets whether to show when a command/module is blocked.",
+      "Description": "Toggles or sets whether to show when a command/module is blocked.",
       "Usage": [
+        ".v",
         ".verbose true"
       ],
       "Submodule": "Permissions",
@@ -3920,7 +3938,7 @@
         ".permrole",
         ".pr"
       ],
-      "Description": "Sets a role which can change permissions. Supply no parameters to see the current one. Type 'reset' instead of the role name to reset the currently set permission role. Users with Administrator server permissions can use permission commands regardless of whether they have the specified role. There is no default permission role.",
+      "Description": "Sets a role which can change permissions. Supply no parameters to see the current one. Type 'reset' instead of the role name to reset the currently set permission role. Users with the Administrator server permissions can use permission commands regardless of whether they have the specified role. There is no default permission role.",
       "Usage": [
         ".pr Some Role",
         ".pr reset"
@@ -4238,7 +4256,7 @@
         ".srvrfilterinv",
         ".sfi"
       ],
-      "Description": "Toggles automatic deletion of invites posted in the server. Does not affect the Bot Owner.",
+      "Description": "Toggles automatic deletion of invites posted in the server. Does not affect users with the Administrator permission.",
       "Usage": [
         ".sfi"
       ],
@@ -4252,9 +4270,37 @@
         ".chnlfilterinv",
         ".cfi"
       ],
-      "Description": "Toggles automatic deletion of invites posted in the channel. Does not negate the `.srvrfilterinv` enabled setting. Does not affect the Bot Owner.",
+      "Description": "Toggles automatic deletion of invites posted in the channel. Does not negate the `.srvrfilterinv` enabled setting. Does not affect users with the Administrator permission.",
       "Usage": [
         ".cfi"
+      ],
+      "Submodule": "FilterCommands",
+      "Module": "Permissions",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".srvrfilterlin",
+        ".sfl"
+      ],
+      "Description": "Toggles automatic deletion of links posted in the server. Does not affect users with the Administrator permission.",
+      "Usage": [
+        ".sfl"
+      ],
+      "Submodule": "FilterCommands",
+      "Module": "Permissions",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".chnlfilterlin",
+        ".cfl"
+      ],
+      "Description": "Toggles automatic deletion of links posted in the channel. Does not negate the `.srvrfilterlin` enabled setting. Does not affect users with the Administrator permission.",
+      "Usage": [
+        ".cfl"
       ],
       "Submodule": "FilterCommands",
       "Module": "Permissions",
@@ -4266,7 +4312,7 @@
         ".srvrfilterwords",
         ".sfw"
       ],
-      "Description": "Toggles automatic deletion of messages containing filtered words on the server. Does not affect the Bot Owner.",
+      "Description": "Toggles automatic deletion of messages containing filtered words on the server. Does not affect users with the Administrator permission.",
       "Usage": [
         ".sfw"
       ],
@@ -4280,7 +4326,7 @@
         ".chnlfilterwords",
         ".cfw"
       ],
-      "Description": "Toggles automatic deletion of messages containing filtered words on the channel. Does not negate the `.srvrfilterwords` enabled setting. Does not affect the Bot Owner.",
+      "Description": "Toggles automatic deletion of messages containing filtered words on the channel. Does not negate the `.srvrfilterwords` enabled setting. Does not affect users with the Administrator permission.",
       "Usage": [
         ".cfw"
       ],
@@ -4398,24 +4444,11 @@
   "Searches": [
     {
       "Aliases": [
-        ".lolban"
-      ],
-      "Description": "Shows top banned champions ordered by ban rate.",
-      "Usage": [
-        ".lolban"
-      ],
-      "Submodule": "Searches",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
         ".rip"
       ],
-      "Description": "rip",
+      "Description": "Shows the inevitable fate of someone.",
       "Usage": [
-        "rip"
+        ".rip @Someone"
       ],
       "Submodule": "Searches",
       "Module": "Searches",
@@ -4426,9 +4459,10 @@
       "Aliases": [
         ".say"
       ],
-      "Description": "Bot will send the message you typed in this channel. Supports embeds.",
+      "Description": "Bot will send the message you typed in the specified channel. If you omit the channel name, it will send the message in the current channel. Supports embeds.",
       "Usage": [
-        ".say hi"
+        ".say hi",
+        ".say #chat hi"
       ],
       "Submodule": "Searches",
       "Module": "Searches",
@@ -4664,19 +4698,6 @@
     },
     {
       "Aliases": [
-        ".#"
-      ],
-      "Description": "Searches Tagdef.com for a hashtag.",
-      "Usage": [
-        ".# ff"
-      ],
-      "Submodule": "Searches",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
         ".catfact"
       ],
       "Description": "Shows a random catfact from <http://catfacts-api.appspot.com/api/facts>",
@@ -4791,6 +4812,19 @@
       "Description": "Shows bible verse. You need to supply book name and chapter:verse",
       "Usage": [
         ".bible genesis 3:19"
+      ],
+      "Submodule": "Searches",
+      "Module": "Searches",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".steam"
+      ],
+      "Description": "Returns a store link for a steam game with the specified name. It doesn't work very well because bundles.",
+      "Usage": [
+        ".steam Sakura Agent"
       ],
       "Submodule": "Searches",
       "Module": "Searches",
@@ -5016,7 +5050,7 @@
       "Aliases": [
         ".osu"
       ],
-      "Description": "Shows osu stats for a player.",
+      "Description": "Shows osu! stats for a player.",
       "Usage": [
         ".osu Name",
         ".osu Name taiko"
@@ -5028,11 +5062,12 @@
     },
     {
       "Aliases": [
-        ".osub"
+        ".gatari"
       ],
-      "Description": "Shows information about an osu beatmap.",
+      "Description": "Shows osu!gatari stats for a player.",
       "Usage": [
-        ".osub https://osu.ppy.sh/s/127712"
+        ".gatari Name",
+        ".gatari Name ctb"
       ],
       "Submodule": "OsuCommands",
       "Module": "Searches",
@@ -5048,21 +5083,6 @@
         ".osu5 Name"
       ],
       "Submodule": "OsuCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".overwatch",
-        ".ow"
-      ],
-      "Description": "Show's basic stats on a player (competitive rank, playtime, level etc) Region codes are: `eu` `us` `cn` `kr`",
-      "Usage": [
-        ".ow us Battletag#1337",
-        ".overwatch eu Battletag#2016"
-      ],
-      "Submodule": "OverwatchCommands",
       "Module": "Searches",
       "Options": null,
       "Requirements": []
@@ -5103,20 +5123,6 @@
       "Description": "Returns the chaos equivalent of a given currency or exchange rate between two currencies.",
       "Usage": [
         ".poec Standard \"Mirror of Kalandra\""
-      ],
-      "Submodule": "PathOfExileCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".pathofexileitem",
-        ".poei"
-      ],
-      "Description": "Searches for a Path of Exile item from the Path of Exile GamePedia.",
-      "Usage": [
-        ".poei \"Quill Rain\""
       ],
       "Submodule": "PathOfExileCommands",
       "Module": "Searches",
@@ -5180,76 +5186,13 @@
     },
     {
       "Aliases": [
-        ".smashcast",
-        ".hb"
-      ],
-      "Description": "Notifies this channel when the specified user starts streaming.",
-      "Usage": [
-        ".smashcast SomeStreamer"
-      ],
-      "Submodule": "StreamNotificationCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": [
-        "ManageMessages Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
-        ".twitch",
-        ".tw"
-      ],
-      "Description": "Notifies this channel when the specified user starts streaming.",
-      "Usage": [
-        ".twitch SomeStreamer"
-      ],
-      "Submodule": "StreamNotificationCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": [
-        "ManageMessages Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
-        ".picarto",
-        ".pa"
-      ],
-      "Description": "Notifies this channel when the specified user starts streaming.",
-      "Usage": [
-        ".picarto SomeStreamer"
-      ],
-      "Submodule": "StreamNotificationCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": [
-        "ManageMessages Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
-        ".mixer",
-        ".bm"
-      ],
-      "Description": "Notifies this channel when the specified user starts streaming.",
-      "Usage": [
-        ".mixer SomeStreamer"
-      ],
-      "Submodule": "StreamNotificationCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": [
-        "ManageMessages Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
         ".streamadd",
+        ".sta",
         ".stadd"
       ],
-      "Description": "Notifies this channel when the user's stream on the specified URL goes online or offline.",
+      "Description": "Notifies this channel when the stream on the specified URL goes online or offline. Offline notifications will only show if you enable `.streamoff`. Maximum 10 per server.",
       "Usage": [
-        ".stadd twitch.tv/someguy"
+        ".sta twitch.tv/someguy"
       ],
       "Submodule": "StreamNotificationCommands",
       "Module": "Searches",
@@ -5260,13 +5203,12 @@
     },
     {
       "Aliases": [
-        ".streamremove",
+        ".streamrm",
         ".strm"
       ],
-      "Description": "Removes notifications of a specified stream on the specified platform on this channel. You can also just specify an url.",
+      "Description": "Stops following the stream on the specified index. (use `.stl` to see indexes)",
       "Usage": [
-        ".strm Twitch SomeGuy",
-        ".strm twitch.tv/someguy"
+        ".strm 2"
       ],
       "Submodule": "StreamNotificationCommands",
       "Module": "Searches",
@@ -5277,27 +5219,13 @@
     },
     {
       "Aliases": [
-        ".streamsclear"
+        ".streamlist",
+        ".stl",
+        ".streamslist"
       ],
-      "Description": "Deletes all followed streams on this server.",
+      "Description": "Lists all streams you are following on this server and their respective indexes.",
       "Usage": [
-        ".streamsclear"
-      ],
-      "Submodule": "StreamNotificationCommands",
-      "Module": "Searches",
-      "Options": null,
-      "Requirements": [
-        "Administrator Server Permission"
-      ]
-    },
-    {
-      "Aliases": [
-        ".liststreams",
-        ".ls"
-      ],
-      "Description": "Lists all streams you are following on this server.",
-      "Usage": [
-        ".ls"
+        ".stl"
       ],
       "Submodule": "StreamNotificationCommands",
       "Module": "Searches",
@@ -5307,11 +5235,12 @@
     {
       "Aliases": [
         ".streamoff",
+        ".sto",
         ".stoff"
       ],
-      "Description": "Toggles whether the bot will notify about streams going offline.",
+      "Description": "Toggles whether the bot will also notify when added streams go offline.",
       "Usage": [
-        ".stoff"
+        ".sto"
       ],
       "Submodule": "StreamNotificationCommands",
       "Module": "Searches",
@@ -5322,11 +5251,13 @@
     },
     {
       "Aliases": [
-        ".streammsg"
+        ".streammsg",
+        ".stm",
+        ".stmsg"
       ],
-      "Description": "Specify an url of a stream you're already following, and a message in order to set a stream notification message which will show up every time stream comes online.",
+      "Description": "Sets the message which will show when the stream on the specified index comes online.",
       "Usage": [
-        ".streammsg https://www.twitch.tv/trolhamonas/ Hello world"
+        ".stm 1 Hey @erryone i'm back online!1!!"
       ],
       "Submodule": "StreamNotificationCommands",
       "Module": "Searches",
@@ -5337,12 +5268,12 @@
     },
     {
       "Aliases": [
-        ".checkstream",
-        ".cs"
+        ".streamcheck",
+        ".stc"
       ],
-      "Description": "Checks if a user is online on a certain streaming platform.",
+      "Description": "Retrieves information about a stream.",
       "Usage": [
-        ".cs twitch MyFavStreamer"
+        ".cs https://twitch.tv/somedude"
       ],
       "Submodule": "StreamNotificationCommands",
       "Module": "Searches",
@@ -5792,11 +5723,16 @@
       ],
       "Description": "Creates a new invite which has infinite max uses and never expires.",
       "Usage": [
-        ".crinv"
+        ".invcr"
       ],
       "Submodule": "InviteCommands",
       "Module": "Utility",
-      "Options": "`--max-uses` (`-m`)   Maximum number of times the invite can be used. Default 0 (never).  \n`--unique` (`-u`)   Not setting this flag will result in bot getting the existing invite with the same settings if it exists, instead of creating a new one.  \n`--temporary` (`-t`)   Setting this flag will make the link expire after 24h.  ",
+      "Options": [
+        "`--max-uses` (`-m`)   Maximum number of times the invite can be used. Default 0 (never).  ",
+        "`--unique` (`-u`)   Not setting this flag will result in bot getting the existing invite with the same settings if it exists, instead of creating a new one.  ",
+        "`--temporary` (`-t`)   If this flag is set, the user will be kicked from the guild once they close their client.  ",
+        "`--expire` (`-e`)   Time in seconds to expire the invite. Default 0 (no expiry).  "
+      ],
       "Requirements": [
         "CreateInstantInvite Channel Permission"
       ]
@@ -6010,9 +5946,9 @@
       "Aliases": [
         ".remindtemplate"
       ],
-      "Description": "Sets message for when the remind is triggered.  Available placeholders are `%user%` - user who ran the command, `%message%` - Message specified in the remind, `%target%` - target channel of the remind.",
+      "Description": "Sets message for when the remind is triggered.",
       "Usage": [
-        ".remindtemplate %user%, do %message%!"
+        ".remindtemplate %user.mention%, do %message%!"
       ],
       "Submodule": "RemindCommands",
       "Module": "Utility",
@@ -6057,14 +5993,18 @@
       "Aliases": [
         ".repeat"
       ],
-      "Description": "Repeat a message every specified number of minutes in the current channel. You can instead specify time of day for the message to be repeated at daily (make sure you've set your server's timezone). You can have up to 5 repeating messages on the server in total.",
+      "Description": "Repeat a message once every `-i` number of minutes in the current channel. You can instead specify time of day for the message to be repeated daily (make sure you've set your server's timezone). If you've specified time of day, you can still override the default daily interval with your own -i. For example `17:30 -i 180 -m \"hi there\"` will post at 17:30 and then every 3 hours after. You can have up to 5 repeating messages on the server in total.",
       "Usage": [
         ".repeat -i 5 -m \"Hello there\" -n",
         ".repeat 17:30 -m \"tea time\""
       ],
       "Submodule": "RepeatCommands",
       "Module": "Utility",
-      "Options": "`--message` (`-m`)   Message to be repeated  \n`--no-redundant` (`-n`)   Whether the message should be reposted if the last message in the channel is this same message.  \n`--interval` (`-i`)   How frequently the repeating message is posted, in minutes.  ",
+      "Options": [
+        "`--message` (`-m`)   Message to be repeated  ",
+        "`--no-redundant` (`-n`)   Whether the message should be reposted if the last message in the channel is this same message.  ",
+        "`--interval` (`-i`)   How frequently the repeating message is posted, in minutes.  "
+      ],
       "Requirements": [
         "ManageMessages Server Permission"
       ]
@@ -6072,7 +6012,9 @@
     {
       "Aliases": [
         ".repeatlist",
-        ".replst"
+        ".replst",
+        ".replist",
+        ".repli"
       ],
       "Description": "Shows currently repeating messages and their indexes.",
       "Usage": [
@@ -6182,9 +6124,10 @@
         ".verboseerror",
         ".ve"
       ],
-      "Description": "Toggles whether the bot should print command errors when a command is incorrectly used.",
+      "Description": "Toggles or sets whether the bot should print command errors when a command is incorrectly used.",
       "Usage": [
-        ".ve"
+        ".ve",
+        ".ve false"
       ],
       "Submodule": "VerboseErrorCommands",
       "Module": "Utility",
@@ -6317,7 +6260,9 @@
       ],
       "Submodule": "Xp",
       "Module": "Xp",
-      "Options": null,
+      "Options": [
+        "`--clean` (`-c`)   Only show users who are on the server.  "
+      ],
       "Requirements": []
     },
     {
@@ -6364,84 +6309,6 @@
       "Requirements": [
         "Bot Owner Only"
       ]
-    },
-    {
-      "Aliases": [
-        ".clubtransfer"
-      ],
-      "Description": "Transfers the ownership of the club to another member of the club.",
-      "Usage": [
-        ".clubtransfer @b1nzy"
-      ],
-      "Submodule": "Club",
-      "Module": "Xp",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".clubadmin"
-      ],
-      "Description": "Assigns (or unassigns) staff role to the member of the club. Admins can ban, kick and accept applications.",
-      "Usage": [
-        ".clubadmin"
-      ],
-      "Submodule": "Club",
-      "Module": "Xp",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".clubcreate"
-      ],
-      "Description": "Creates a club. You must be at least level 5 and not be in the club already.",
-      "Usage": [
-        ".clubcreate b1nzy's friends"
-      ],
-      "Submodule": "Club",
-      "Module": "Xp",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".clubicon"
-      ],
-      "Description": "Sets the club icon.",
-      "Usage": [
-        ".clubicon https://i.imgur.com/htfDMfU.png"
-      ],
-      "Submodule": "Club",
-      "Module": "Xp",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".clubinfo"
-      ],
-      "Description": "Shows information about the club.",
-      "Usage": [
-        ".clubinfo b1nzy's friends#123"
-      ],
-      "Submodule": "Club",
-      "Module": "Xp",
-      "Options": null,
-      "Requirements": []
-    },
-    {
-      "Aliases": [
-        ".clubbans"
-      ],
-      "Description": "Shows the list of users who have banned from your club. Paginated. You must be club owner to use this command.",
-      "Usage": [
-        ".clubbans 2"
-      ],
-      "Submodule": "Club",
-      "Module": "Xp",
-      "Options": null,
-      "Requirements": []
     },
     {
       "Aliases": [
@@ -6580,6 +6447,84 @@
       "Description": "Shows club rankings on the specified page.",
       "Usage": [
         ".clublb 2"
+      ],
+      "Submodule": "Club",
+      "Module": "Xp",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".clubtransfer"
+      ],
+      "Description": "Transfers the ownership of the club to another member of the club.",
+      "Usage": [
+        ".clubtransfer @b1nzy"
+      ],
+      "Submodule": "Club",
+      "Module": "Xp",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".clubadmin"
+      ],
+      "Description": "Assigns (or unassigns) staff role to the member of the club. Admins can ban, kick and accept applications.",
+      "Usage": [
+        ".clubadmin"
+      ],
+      "Submodule": "Club",
+      "Module": "Xp",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".clubcreate"
+      ],
+      "Description": "Creates a club. You must be at least level 5 and not be in the club already.",
+      "Usage": [
+        ".clubcreate b1nzy's friends"
+      ],
+      "Submodule": "Club",
+      "Module": "Xp",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".clubicon"
+      ],
+      "Description": "Sets the club icon.",
+      "Usage": [
+        ".clubicon https://i.imgur.com/htfDMfU.png"
+      ],
+      "Submodule": "Club",
+      "Module": "Xp",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".clubinfo"
+      ],
+      "Description": "Shows information about the club.",
+      "Usage": [
+        ".clubinfo b1nzy's friends#123"
+      ],
+      "Submodule": "Club",
+      "Module": "Xp",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
+        ".clubbans"
+      ],
+      "Description": "Shows the list of users who have banned from your club. Paginated. You must be club owner to use this command.",
+      "Usage": [
+        ".clubbans 2"
       ],
       "Submodule": "Club",
       "Module": "Xp",
