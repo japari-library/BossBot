@@ -736,7 +736,7 @@
   "administration_user_not_found": "User not found.",
   "administration_user_warned": "User {0} has been warned.",
   "administration_user_warned_and_punished": "User {0} has been warned and {1} punishment has been applied.",
-  "administration_warned_on": "Warned on {0} server",
+  "administration_warned_on_by_Park_Guides": "Warned on {0} server by the Park Guides",
   "administration_warned_on_at_by_Park_Guides": "On {0} at {1} by the Park Guides",
   "administration_warnings_cleared": "All warnings have been cleared for {0}.",
   "administration_warning_clear_fail": "Warning not cleared. Either the warning at that index doesn't exist, or it has already been cleared.",
