@@ -89,7 +89,7 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(queryPage.fullurl).ConfigureAwait(false)) //get pictures by going through the friend page
                         {
                             imageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
-                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement).GetInnerText();
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement).InnerHtml;
                         }
 
                         // ! Possible bug in the old version of .NET Core used to build Boss.
@@ -103,6 +103,7 @@ namespace NadekoBot.Modules.Searches
                                 ? $@"{_creds.KFTriviaBaseURL}/RR/{friendId}.png"
                                 : "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
                         }
+                        friendName = Regex.Replace(friendName, "<[^>]*>", ""); //remove html tags
 
                         await msg.DeleteAsync().ConfigureAwait(false);
                         // footer 
@@ -190,8 +191,8 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(friendPage).ConfigureAwait(false))
                         {
                             friendImageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
-                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.GetInnerText() ?? "Name Unavailable";
-                            friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.GetInnerText() ?? "Description Unavailable";
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.InnerHtml ?? "Name Unavailable";
+                            friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.InnerHtml ?? "Description Unavailable";
                         }
 
                         // ! Possible bug in the old version of .NET Core used to build Boss.
@@ -205,6 +206,7 @@ namespace NadekoBot.Modules.Searches
                                 ? $@"{_creds.KFTriviaBaseURL}/RR/{friendId}.png"
                                 : "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
                         }
+                        friendName = Regex.Replace(friendName, "<[^>]*>", ""); //remove html tags
                         friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
 
                         // footer 
@@ -304,7 +306,7 @@ namespace NadekoBot.Modules.Searches
                         using (var document = await BrowsingContext.New(config).OpenAsync(wipPage).ConfigureAwait(false))
                         {
                             friendImageUrl = (document.QuerySelector(".image > img") as IHtmlImageElement)?.Source;
-                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.GetInnerText() ?? "Name Unavailable";
+                            friendName = (document.QuerySelector(".firstHeading") as IHtmlHeadingElement)?.InnerHtml ?? "Name Unavailable";
                             friendInfo = (document.QuerySelector("#mw-content-text > p") as IHtmlParagraphElement)?.InnerHtml ?? "Description Unavailable";
                         }
 
@@ -319,6 +321,7 @@ namespace NadekoBot.Modules.Searches
                                 ? $@"{_creds.KFTriviaBaseURL}/RR/{friendId}.png"
                                 : "https://japari-library.com/w/resources/assets/Jlibrarywglogo.png?d63ab";
                         }
+                        friendName = Regex.Replace(friendName, "<[^>]*>", ""); //remove html tags
                         friendInfo = Regex.Replace(friendInfo, "<[^>]*>", ""); //remove html tags
 
                         // footer 
