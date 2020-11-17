@@ -183,7 +183,7 @@ namespace NadekoBot.Modules.Utility
             [RequireContext(ContextType.Guild)]
             public async Task QuoteDelete(int id)
             {
-                var isAdmin = ((IGuildUser)ctx.Message.Author).GuildPermissions.Administrator;
+                var isAdmin = ((IGuildUser)ctx.Message.Author).GuildPermissions.ManageMessages;
                 var success = false;
                 string response;
                 using (var uow = _db.GetDbContext())
