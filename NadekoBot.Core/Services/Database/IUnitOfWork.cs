@@ -23,6 +23,8 @@ namespace NadekoBot.Core.Services.Database
         IClubRepository Clubs { get; }
         IPollsRepository Polls { get; }
         IPlantedCurrencyRepository PlantedCurrency { get; }
+        IAutoRefusedGuildUsernamesRepository AutoRefusedGuildUsernamesRepository { get; }
+        IAutoRefusedGuildUsernameTogglesRepository AutoRefusedGuildUsernameTogglesRepository { get; }
 
         int Complete();
         Task<int> CompleteAsync();

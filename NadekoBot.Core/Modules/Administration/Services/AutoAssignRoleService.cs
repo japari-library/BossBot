@@ -88,6 +88,15 @@ namespace NadekoBot.Modules.Administration.Services
 
             _client.UserJoined += (user) =>
             {
+                try
+                {
+                    if (!IsUsernameValid(user.Guild.Id, user.Nickname))
+                    {
+                        return Task.CompletedTask;
+                    }
+                }
+                catch (Exception ex) { _log.Warn(ex); }
+                
                 if (AutoAssignedRoles.TryGetValue(user.Guild.Id, out ulong roleId)
                     && roleId != 0)
                 {
@@ -102,6 +111,20 @@ namespace NadekoBot.Modules.Administration.Services
                 }
                 return Task.CompletedTask;
             };
+        }
+
+        private bool IsUsernameValid(ulong guildId, string nickname)
+        {
+            using (var uow = _db.UnitOfWork)
+            {
+                if (!uow.AutoRefusedGuildUsernameTogglesRepository.GetToggleStatus(guildId))
+                {
+                    return true;
+                }
+                List<string> bannedWords = uow.AutoRefusedGuildUsernamesRepository.GetAllBannedWords(guildId);
+
+                return !bannedWords.Any(x => nickname.Contains(x));
+            }
         }
 
         public void EnableAar(ulong guildId, ulong roleId)

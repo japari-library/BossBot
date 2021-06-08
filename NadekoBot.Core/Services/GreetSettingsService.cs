@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NadekoBot.Common;
 using NadekoBot.Common.Replacements;
+using System.Collections.Generic;
 
 namespace NadekoBot.Core.Services
 {
@@ -122,12 +123,35 @@ namespace NadekoBot.Core.Services
             }
         }
 
+        private bool IsUsernameValid(ulong guildId, string nickname)
+        {
+            using (var uow = _db.UnitOfWork)
+            {
+                if (!uow.AutoRefusedGuildUsernameTogglesRepository.GetToggleStatus(guildId))
+                {
+                    return true;
+                }
+                List<string> bannedWords = uow.AutoRefusedGuildUsernamesRepository.GetAllBannedWords(guildId);
+
+                return !bannedWords.Any(x => nickname.Contains(x));
+            }
+        }
+
         private Task UserJoined(IGuildUser user)
         {
             var _ = Task.Run(async () =>
             {
                 try
                 {
+                    try
+                    {
+                        if (!IsUsernameValid(user.GuildId, user.Nickname))
+                        {
+                            return;
+                        }
+                    }
+                    catch (Exception ex) { _log.Warn(ex); }
+
                     var conf = GetOrAddSettingsForGuild(user.GuildId);
 
                     if (conf.SendChannelGreetMessage)

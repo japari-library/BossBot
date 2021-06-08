@@ -34,6 +34,7 @@ namespace NadekoBot.Core.Services
         string RedisOptions { get; }
 
         string KFTriviaBaseURL { get; }
+        string InvalidUsernameRoleId { get; }
     }
 
     public class RestartConfig

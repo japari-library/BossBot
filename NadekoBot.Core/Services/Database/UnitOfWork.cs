@@ -54,6 +54,14 @@ namespace NadekoBot.Core.Services.Database
         private IPlantedCurrencyRepository _planted;
         public IPlantedCurrencyRepository PlantedCurrency => _planted ?? (_planted = new PlantedCurrencyRepository(_context));
 
+        private IAutoRefusedGuildUsernamesRepository _autoRefusedGuildUsernamesRepository;
+        public IAutoRefusedGuildUsernamesRepository AutoRefusedGuildUsernamesRepository =>
+            _autoRefusedGuildUsernamesRepository ?? (_autoRefusedGuildUsernamesRepository = new AutoRefusedGuildUsernamesRepository(_context));
+
+        private IAutoRefusedGuildUsernameTogglesRepository _autoRefusedGuildUsernameTogglesRepository;
+        public IAutoRefusedGuildUsernameTogglesRepository AutoRefusedGuildUsernameTogglesRepository =>
+            _autoRefusedGuildUsernameTogglesRepository ?? (_autoRefusedGuildUsernameTogglesRepository = new AutoRefusedGuildUsernameTogglesRepository(_context));
+
         public UnitOfWork(NadekoContext context)
         {
             _context = context;

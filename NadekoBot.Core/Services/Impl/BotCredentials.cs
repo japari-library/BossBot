@@ -47,6 +47,7 @@ namespace NadekoBot.Core.Services.Impl
         public string RedisOptions { get; }
 
         public string KFTriviaBaseURL { get; }
+        public string InvalidUsernameRoleId { get; }
 
         public BotCredentials()
         {
@@ -143,6 +144,7 @@ namespace NadekoBot.Core.Services.Impl
                 }
 
                 KFTriviaBaseURL = data[nameof(KFTriviaBaseURL)];
+                InvalidUsernameRoleId = data[nameof(InvalidUsernameRoleId)];
             }
             catch (Exception ex)
             {

@@ -41,6 +41,9 @@ namespace NadekoBot.Core.Services.Database
         public DbSet<UserXpStats> UserXpStats { get; set; }
         public DbSet<ClubInfo> Clubs { get; set; }
 
+        public DbSet<AutoRefusedGuildUsername> AutoRefusedGuildUsernames { get; set; }
+        public DbSet<AutoRefusedGuildUsernameToggle> AutoRefusedGuildUsernameToggles { get; set; }
+
         //logging
         public DbSet<LogSetting> LogSettings { get; set; }
         public DbSet<IgnoredLogChannel> IgnoredLogChannels { get; set; }
@@ -141,6 +144,14 @@ namespace NadekoBot.Core.Services.Database
 
             modelBuilder.Entity<PlantedCurrency>()
                 .HasIndex(x => x.ChannelId);
+
+            modelBuilder.Entity<AutoRefusedGuildUsername>()
+                .Property(x => x.BannedText)
+                .IsRequired();
+
+            modelBuilder.Entity<AutoRefusedGuildUsernameToggle>()
+                .Property(x => x.AutoRefuse)
+                .IsRequired();
 
             #endregion
 
